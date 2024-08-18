@@ -208,34 +208,47 @@ def index():
     return render_template('index.html')
 
 
+from datetime import datetime
+
 @app.route('/schedule', methods=['GET', 'POST'])
 @login_required
 def schedule():
     if request.method == 'POST':
         # Retrieve form data
-        customer = request.form.get('customer')
-        vehicle = request.form.get('vehicle')
+        customer_id = request.form.get('customer_id')
+        vehicle_id = request.form.get('vehicle_id')
+        product_id = request.form.get('product_id')
         appointment_type = request.form.get('appointment_type')
         duration = int(request.form.get('duration'))
-        product = request.form.get('product')
-        
-        # Logic to save appointment to the database
-        # This will involve creating a new Appointment object and saving it
-        
+        start_time = request.form.get('start_time')
+
+        # Create a new Appointment object
+        new_appointment = Appointment(
+            date=datetime.fromisoformat(start_time),
+            customer_id=customer_id,
+            vehicle_id=vehicle_id,
+            product_id=product_id,
+            install_type=appointment_type,
+            comments=request.form.get('comments')
+        )
+        db.session.add(new_appointment)
+        db.session.commit()
+
         return redirect(url_for('schedule'))
-    
-    # Retrieve existing appointments to display in the calendar
+
+    # Handle GET requests - return appointments in JSON format
     appointments = Appointment.query.all()
     events = []
     for appointment in appointments:
         events.append({
-            'title': f'{appointment.customer} - {appointment.product}',
-            'start': appointment.start_time.isoformat(),
-            'end': (appointment.start_time + timedelta(hours=appointment.duration)).isoformat(),
-            'color': 'blue' if appointment.appointment_type == 'standard' else 'orange'
+            'title': f'{appointment.customer.first_name} {appointment.customer.last_name} - {appointment.install_type}',
+            'start': appointment.date.isoformat(),
+            'end': (appointment.date + timedelta(hours=appointment.duration)).isoformat(),
+            'color': 'blue' if appointment.install_type == 'standard' else 'orange'
         })
-    
+
     return render_template('schedule.html', events=events)
+
 
 
 

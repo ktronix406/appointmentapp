@@ -5,12 +5,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Appointment Scheduling</title>
-
-    <!-- FullCalendar 6.1.15 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/main.min.css" rel="stylesheet">
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- FullCalendar 6.1.15 JS -->
+    <script src=" https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js "></script>
     <!-- Bootstrap CSS for Modal -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+<style>
+    #calendar {
+        margin: 40px;
+        /* Adds 20px of margin around the calendar */
+    }
+</style>
 
 <body>
     <div class="container">
@@ -20,15 +27,20 @@
 
         <div class="modal fade" id="appointmentModal" tabindex="-1" aria-labelledby="appointmentModalLabel"
             aria-hidden="true">
-            <div class="modal-dialog modal-lg">
+            <div class="modal-dialog modal-lg"> <!-- Added modal-lg class for wider modal -->
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="appointmentModalLabel">Create Appointment</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form id="appointment-form" method="POST">
+                        <form id="appointment-form" action="/schedule" method="POST">
                             <input type="hidden" name="start_time" id="appointmentStartTime">
+                            <!-- Inside your form -->
+                            <input type="hidden" name="customer_id" id="customerId" value="{{ customer_id }}">
+                            <input type="hidden" name="vehicle_id" id="vehicleId" value="{{ vehicle_id }}">
+                            <input type="hidden" name="product_id" id="productId" value="{{ product_id }}">
+
 
                             <div class="row">
                                 <!-- Customer Information -->
@@ -163,46 +175,7 @@
             </div>
         </div>
 
-        <!-- FullCalendar 6.1.15 JS -->
-        <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/index.global.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/index.global.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.15/index.global.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-
-
         <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var calendarEl = document.getElementById('calendar');
-    var calendar = new FullCalendar.Calendar(calendarEl, {
-
-        initialView: 'timeGridWeek',
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
-        },
-        slotMinTime: '08:00:00',
-        slotMaxTime: '18:00:00',
-        slotDuration: '00:20:00', // Adjusts the duration of each slot, e.g., '00:30:00' for 30 minutes slots
-        slotLabelInterval: '01:00', // Adjusts the interval of the time labels
-        contentHeight: 'auto', // Adjusts the calendar height automatically based on the view
-        height: 'auto', // Or set a specific height
-        expandRows: true, // Ensures that the rows will expand to fill available height
-        selectable: true,
-        select: function(info) {
-            alert('Selected range: ' + info.startStr + ' to ' + info.endStr);
-        },
-        eventClick: function(info) {
-            alert('Event: ' + info.event.title);
-        },
-        editable: true,
-        dayMaxEvents: true // when too many events in a day, show the popover
-    });
-    calendar.render();
-});
-
-            
-
             // Phone number formatting function
             document.getElementById('customerPhone').addEventListener('input', function (e) {
                 var x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,4})/);
@@ -318,7 +291,38 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         </script>
 
-        
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var calendarEl = document.getElementById('calendar');
+                var calendar = new FullCalendar.Calendar(calendarEl, {
+                    themeSystem: 'bootstrap',
+                    initialView: 'timeGridDay',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    },
+                    slotMinTime: '08:00:00',
+                    slotMaxTime: '18:00:00',
+                    slotDuration: '01:00:00',
+                    expandRows: true,
+                    selectable: true,
+                    selectMirror: true,
+                    select: function (info) {
+                        var modal = new bootstrap.Modal(document.getElementById('appointmentModal'));
+                        document.getElementById('appointmentStartTime').value = info.startStr;
+                        modal.show();
+                    },
+                    events: '/schedule',  // Fetch events from the /schedule endpoint
+                    eventClick: function (info) {
+                        alert('Clicked on: ' + info.event.title);
+                    }
+                });
+                calendar.render();
+            });
+
+        </script>
+
 </body>
 
 </html>
