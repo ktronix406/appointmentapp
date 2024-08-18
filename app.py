@@ -4,13 +4,14 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import Session
 from datetime import timedelta
-
+from flask_migrate import Migrate
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'  # Replace with your actual secret key
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///car_audio.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 # Set up Flask-Login
 login_manager = LoginManager()
@@ -71,13 +72,14 @@ class Installer(db.Model):
     skill_level = db.Column(db.String(50), nullable=False)
     appointments = db.relationship('Appointment', backref='installer', lazy=True)
 
-# Appointment table
+# Modify the Appointment table to include end_time
 class Appointment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.DateTime, nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)  # Rename 'date' to 'start_time'
+    end_time = db.Column(db.DateTime, nullable=False)  # New column to store end time
     customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
     vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicle.id'), nullable=False)
-    installer_id = db.Column(db.Integer, db.ForeignKey('installer.id'), nullable=True)  # Installer can be assigned later
+    installer_id = db.Column(db.Integer, db.ForeignKey('installer.id'), nullable=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     install_type = db.Column(db.String(50), nullable=False)
     comments = db.Column(db.Text)
@@ -214,22 +216,25 @@ from datetime import datetime
 @login_required
 def schedule():
     if request.method == 'POST':
-        # Retrieve form data
         customer_id = request.form.get('customer_id')
         vehicle_id = request.form.get('vehicle_id')
         product_id = request.form.get('product_id')
-        appointment_type = request.form.get('appointment_type')
-        duration = int(request.form.get('duration'))
+        install_type = request.form.get('installation_type')
         start_time = request.form.get('start_time')
+        duration = int(request.form.get('duration'))
+        end_time = datetime.fromisoformat(start_time) + timedelta(hours=duration)
+        comments = request.form.get('comments', '')
 
-        # Create a new Appointment object
+        if not all([customer_id, vehicle_id, product_id, install_type, start_time]):
+            return "Missing data for appointment creation", 400
+
         new_appointment = Appointment(
-            date=datetime.fromisoformat(start_time),
+            date=start_time,
             customer_id=customer_id,
             vehicle_id=vehicle_id,
             product_id=product_id,
-            install_type=appointment_type,
-            comments=request.form.get('comments')
+            install_type=install_type,
+            comments=comments
         )
         db.session.add(new_appointment)
         db.session.commit()
