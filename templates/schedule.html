@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointment Scheduling</title>
+
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.9.0/main.min.css" rel="stylesheet">
+    <!-- Bootstrap CSS for Modal -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- jQuery and Moment.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+    <!-- FullCalendar JS -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.9.0/main.min.js"></script>
+    <!-- Bootstrap JS for Modal -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom Styles -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Lucida Grande", Helvetica, Arial, Verdana, sans-serif;
+            font-size: 14px;
+        }
+
+        #calendar {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 10px;
+        }
+
+        .fc-event {
+            border-radius: 1px !important;
+            font-weight: 300 !important;
+            line-height: 1.5 !important;
+        }
+
+        .fc-image {
+            display: block;
+            height: 50px;
+            overflow: hidden;
+            position: relative;
+            width: 100%;
+        }
+
+        .fc-image img {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            height: auto;
+            width: 100%;
+            transform: translate(-50%, -50%);
+        }
+
+        .tooltip {
+            width: 145px;
+            word-wrap: break-word;
+            display: none;
+            position: absolute;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            color: #fff;
+            font-size: 12px Arial;
+            z-index: 9999;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Appointment Scheduling</h1>
+
+        <div id="calendar" class="calendar"></div>
+
+        <div class="modal fade" id="appointmentModal" tabindex="-1" aria-labelledby="appointmentModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="appointmentModalLabel">Create Appointment</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="appointment-form" method="POST">
+                            <input type="hidden" name="start_time" id="appointmentStartTime">
+
+                            <div class="row">
+                                <!-- Customer Information -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="customerFirstName" class="form-label">First Name</label>
+                                    <input type="text" class="form-control" id="customerFirstName"
+                                        name="customer_first_name" placeholder="Enter first name" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="customerLastName" class="form-label">Last Name</label>
+                                    <input type="text" class="form-control" id="customerLastName"
+                                        name="customer_last_name" placeholder="Enter last name" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="customerPhone" class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="customerPhone" name="customer_phone"
+                                        placeholder="(999) 999-9999" required>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <!-- Vehicle Information -->
+                                <div class="col-md-4 mb-3">
+                                    <label for="vehicleYear" class="form-label">Vehicle Year</label>
+                                    <input type="text" class="form-control" id="vehicleYear" name="vehicle_year"
+                                        placeholder="Enter vehicle year" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="vehicleMake" class="form-label">Vehicle Make</label>
+                                    <input type="text" class="form-control" id="vehicleMake" name="vehicle_make"
+                                        placeholder="Enter vehicle make" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="vehicleModel" class="form-label">Vehicle Model</label>
+                                    <input type="text" class="form-control" id="vehicleModel" name="vehicle_model"
+                                        placeholder="Enter vehicle model" required>
+                                </div>
+                            </div>
+
+                            <!-- Product Details Section -->
+                            <div id="product-details-section">
+                                <div class="row mb-3 product-entry">
+                                    <div class="col-md-6">
+                                        <label for="productName" class="form-label">Product Name</label>
+                                        <input type="text" class="form-control" id="productName" name="product_name[]"
+                                            placeholder="Enter product name" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="productPrice" class="form-label">Product Price</label>
+                                        <input type="text" class="form-control" id="productPrice" name="product_price[]"
+                                            placeholder="Enter product price (informational only)">
+                                    </div>
+                                    <div class="col-md-12 text-end">
+                                        <button type="button" class="btn btn-danger btn-sm remove-product">Remove
+                                            Product</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <button type="button" class="btn btn-secondary btn-sm" id="addProduct">Add Another
+                                        Product</button>
+                                </div>
+                            </div>
+
+                            <!-- Installation Type and Duration -->
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="installationType" class="form-label">Installation Type</label>
+                                    <select class="form-select" id="installationType" name="installation_type" required>
+                                        <option value="standard">Standard Installation</option>
+                                        <option value="custom">Custom Installation</option>
+                                        <option value="check">Check</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="duration" class="form-label">Duration</label>
+                                    <select class="form-select" id="duration" name="duration" required>
+                                        <option value="1">1 Hour</option>
+                                        <option value="2">2 Hours</option>
+                                        <option value="3">3 Hours</option>
+                                        <option value="4">4 Hours</option>
+                                        <option value="5">5 Hours</option>
+                                        <option value="6">6 Hours</option>
+                                        <option value="all_day">All Day</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Installation Details Section -->
+                            <div id="installation-details-section">
+                                <div class="row mb-3 installation-entry">
+                                    <div class="col-md-6">
+                                        <label for="installationJob" class="form-label">Installation Job</label>
+                                        <input type="text" class="form-control" id="installationJob"
+                                            name="installation_job[]" placeholder="Enter installation job details"
+                                            required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="installationPrice" class="form-label">Installation Price</label>
+                                        <input type="text" class="form-control" id="installationPrice"
+                                            name="installation_price[]" placeholder="Enter installation price" required>
+                                    </div>
+                                    <div class="col-md-12 text-end">
+                                        <button type="button" class="btn btn-danger btn-sm remove-installation">Remove
+                                            Installation</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <button type="button" class="btn btn-secondary btn-sm" id="addInstallation">Add
+                                        Another Installation Job</button>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <!-- Additional Notes -->
+                                <div class="col-md-12 mb-3">
+                                    <label for="notes" class="form-label">Additional Notes</label>
+                                    <textarea class="form-control" id="notes" name="notes"
+                                        placeholder="Enter additional notes" rows="3"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <button type="submit" class="btn btn-primary w-100">Schedule Appointment</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            $(document).ready(function () {
+                var calendarEl = document.getElementById('calendar');
+                var calendar = new FullCalendar.Calendar(calendarEl, {
+                    themeSystem: 'bootstrap', // Use Bootstrap theme
+                    initialView: 'timeGridDay', // Default to daily view
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    },
+                    slotMinTime: '08:00:00',
+                    slotMaxTime: '18:00:00',
+                    slotDuration: '01:00:00',
+                    selectable: true,
+                    editable: true, // Enable drag-and-drop
+ 
+                    eventClick: function (info) {
+                        // Logic to open a detailed view for editing
+                        alert('Clicked on: ' + info.event.title);
+                    },
+                    select: function (info) {
+                        // Open the modal when a time slot is clicked
+                        var modal = new bootstrap.Modal(document.getElementById('appointmentModal'));
+                        document.getElementById('appointmentStartTime').value = info.startStr; // Set the start time in the form
+                        modal.show();
+                    }
+                });
+                calendar.render();
+            });
+
+            // Phone number formatting function
+            document.getElementById('customerPhone').addEventListener('input', function (e) {
+                var x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,4})/);
+                e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
+            });
+
+            // Add product functionality
+            document.getElementById('addProduct').addEventListener('click', function () {
+                var productContainer = document.createElement('div');
+                productContainer.className = 'row mb-3 product-entry'; // Class for grouping
+
+                // Product Name Input
+                var productNameDiv = document.createElement('div');
+                productNameDiv.className = 'col-md-6';
+                var productNameInput = document.createElement('input');
+                productNameInput.type = 'text';
+                productNameInput.name = 'product_name[]';
+                productNameInput.placeholder = 'Enter product name';
+                productNameInput.className = 'form-control';
+                productNameDiv.appendChild(productNameInput);
+
+                // Product Price Input
+                var productPriceDiv = document.createElement('div');
+                productPriceDiv.className = 'col-md-6';
+                var productPriceInput = document.createElement('input');
+                productPriceInput.type = 'text';
+                productPriceInput.name = 'product_price[]';
+                productPriceInput.placeholder = 'Enter product price (informational only)';
+                productPriceInput.className = 'form-control';
+                productPriceDiv.appendChild(productPriceInput);
+
+                // Remove Button
+                var removeButtonDiv = document.createElement('div');
+                removeButtonDiv.className = 'col-md-12 text-end';
+                var removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'btn btn-danger btn-sm remove-product';
+                removeButton.textContent = 'Remove Product';
+                removeButtonDiv.appendChild(removeButton);
+
+                // Append inputs and button to the container
+                productContainer.appendChild(productNameDiv);
+                productContainer.appendChild(productPriceDiv);
+                productContainer.appendChild(removeButtonDiv);
+
+                document.getElementById('product-details-section').appendChild(productContainer);
+
+                // Add remove functionality to the newly added remove button
+                removeButton.addEventListener('click', function () {
+                    productContainer.remove();
+                });
+            });
+
+            // Add installation job functionality
+            document.getElementById('addInstallation').addEventListener('click', function () {
+                var installationContainer = document.createElement('div');
+                installationContainer.className = 'row mb-3 installation-entry'; // Class for grouping
+
+                // Installation Job Input
+                var installationJobDiv = document.createElement('div');
+                installationJobDiv.className = 'col-md-6';
+                var installationJobInput = document.createElement('input');
+                installationJobInput.type = 'text';
+                installationJobInput.name = 'installation_job[]';
+                installationJobInput.placeholder = 'Enter installation job details';
+                installationJobInput.className = 'form-control';
+                installationJobDiv.appendChild(installationJobInput);
+
+                // Installation Price Input
+                var installationPriceDiv = document.createElement('div');
+                installationPriceDiv.className = 'col-md-6';
+                var installationPriceInput = document.createElement('input');
+                installationPriceInput.type = 'text';
+                installationPriceInput.name = 'installation_price[]';
+                installationPriceInput.placeholder = 'Enter installation price';
+                installationPriceInput.className = 'form-control';
+                installationPriceDiv.appendChild(installationPriceInput);
+
+                // Remove Button
+                var removeButtonDiv = document.createElement('div');
+                removeButtonDiv.className = 'col-md-12 text-end';
+                var removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'btn btn-danger btn-sm remove-installation';
+                removeButton.textContent = 'Remove Installation';
+                removeButtonDiv.appendChild(removeButton);
+
+                // Append inputs and button to the container
+                installationContainer.appendChild(installationJobDiv);
+                installationContainer.appendChild(installationPriceDiv);
+                installationContainer.appendChild(removeButtonDiv);
+
+                document.getElementById('installation-details-section').appendChild(installationContainer);
+
+                // Add remove functionality to the newly added remove button
+                removeButton.addEventListener('click', function () {
+                    installationContainer.remove();
+                });
+            });
+
+            // Remove product functionality for existing products
+            document.querySelectorAll('.remove-product').forEach(button => {
+                button.addEventListener('click', function () {
+                    button.closest('.product-entry').remove();
+                });
+            });
+
+            // Remove installation functionality for existing installations
+            document.querySelectorAll('.remove-installation').forEach(button => {
+                button.addEventListener('click', function () {
+                    button.closest('.installation-entry').remove();
+                });
+            });
+        </script>
+</body>
+
+</html>

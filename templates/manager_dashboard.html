@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .section {
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        form {
+            display: inline;
+        }
+        input, select, button {
+            margin: 10px 0;
+            padding: 10px;
+            width: 80%;
+            max-width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Manager Dashboard</h1>
+
+        <!-- User Management Section -->
+        <div class="section">
+            <h2>User Management</h2>
+
+            <!-- View and Delete Users -->
+            <h3>All Users</h3>
+            <table>
+                <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Action</th>
+                </tr>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.role }}</td>
+                    <td>
+                        <form method="POST">
+                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                            <button type="submit" name="delete_user">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+
+            <!-- Add New User -->
+            <form method="POST">
+                <h3>Add New User</h3>
+                <input type="text" name="username" placeholder="Username" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <select name="role">
+                    <option value="Sales">Sales</option>
+                    <option value="Installation">Installation</option>
+                    <option value="Manager">Manager</option>
+                </select>
+                <button type="submit" name="add_user">Add User</button>
+            </form>
+
+            <!-- Update User -->
+            <form method="POST">
+                <h3>Update User</h3>
+                <select name="user_id">
+                    {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.username }} ({{ user.role }})</option>
+                    {% endfor %}
+                </select>
+                <input type="password" name="new_password" placeholder="New Password">
+                <input type="text" name="new_email" placeholder="New Email">
+                <button type="submit" name="update_user">Update User</button>
+            </form>
+        </div>
+
+        <!-- Customer Management Section -->
+        <div class="section">
+            <h2>Customer Management</h2>
+            <form method="POST">
+                <select name="customer_id">
+                    {% for customer in customers %}
+                        <option value="{{ customer.id }}">{{ customer.first_name }} {{ customer.last_name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" name="delete_customer">Delete Customer</button>
+            </form>
+        </div>
+
+        <!-- Appointment Management Section -->
+        <div class="section">
+            <h2>Appointment Management</h2>
+            <form method="POST">
+                <select name="appointment_id">
+                    {% for appointment in appointments %}
+                        <option value="{{ appointment.id }}">Appointment #{{ appointment.id }} - {{ appointment.date }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" name="delete_appointment">Delete Appointment</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
