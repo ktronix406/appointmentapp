@@ -1,9 +1,9 @@
-from flask import Flask, render_template, redirect, url_for, request
+from flask import Flask, render_template, redirect, url_for, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import timedelta, datetime
 from flask_migrate import Migrate
 
 app = Flask(__name__)
@@ -72,7 +72,7 @@ class Installer(db.Model):
     skill_level = db.Column(db.String(50), nullable=False)
     appointments = db.relationship('Appointment', backref='installer', lazy=True)
 
-# Modify the Appointment table to include end_time
+# Appointment table
 class Appointment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     start_time = db.Column(db.DateTime, nullable=False)
@@ -214,12 +214,11 @@ def index():
     return render_template('index.html')
 
 
-from datetime import datetime, timedelta
-
 @app.route('/schedule', methods=['GET', 'POST'])
 @login_required
 def schedule():
     if request.method == 'POST':
+        
         # Debugging: Print form data to console
         for key, value in request.form.items():
             print(f"{key}: {value}")
@@ -309,6 +308,7 @@ def schedule():
     events = []
     for appointment in appointments:
         events.append({
+            'id': appointment.id,
             'title': f'{appointment.customer.first_name} {appointment.customer.last_name} - {appointment.product.name}',
             'start': appointment.start_time.isoformat(),
             'end': appointment.end_time.isoformat(),
@@ -316,6 +316,65 @@ def schedule():
         })
 
     return render_template('schedule.html', events=events)
+
+
+@app.route('/appointment/delete/<int:appointment_id>', methods=['POST'])
+@login_required
+def delete_appointment(appointment_id):
+    appointment = Appointment.query.get(appointment_id)
+    if appointment:
+        db.session.delete(appointment)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Appointment not found'}), 404
+
+
+@app.route('/appointment/edit/<int:appointment_id>', methods=['POST'])
+@login_required
+def edit_appointment(appointment_id):
+    appointment = Appointment.query.get(appointment_id)
+    if appointment:
+        start_time = request.form.get('start_time')
+        duration_str = request.form.get('duration')
+        if not start_time or not duration_str:
+            return jsonify({'status': 'error', 'message': 'Invalid data'}), 400
+        
+        try:
+            duration = int(duration_str)
+            appointment.start_time = datetime.fromisoformat(start_time)
+            appointment.end_time = appointment.start_time + timedelta(hours=duration)
+            db.session.commit()
+            return jsonify({'status': 'success'})
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f'Error editing appointment: {e}')
+            return jsonify({'status': 'error', 'message': 'Error editing appointment'}), 500
+    else:
+        return jsonify({'status': 'error', 'message': 'Appointment not found'}), 404
+
+
+@app.route('/appointment/move/<int:appointment_id>', methods=['POST'])
+@login_required
+def move_appointment(appointment_id):
+    appointment = Appointment.query.get(appointment_id)
+    if appointment:
+        start_time = request.form.get('start_time')
+        if not start_time:
+            return jsonify({'status': 'error', 'message': 'Invalid data'}), 400
+        
+        try:
+            appointment.start_time = datetime.fromisoformat(start_time)
+            appointment.end_time = appointment.start_time + (appointment.end_time - appointment.start_time)
+            db.session.commit()
+            return jsonify({'status': 'success'})
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f'Error moving appointment: {e}')
+            return jsonify({'status': 'error', 'message': 'Error moving appointment'}), 500
+    else:
+        return jsonify({'status': 'error', 'message': 'Appointment not found'}), 404
+
 
 
 
