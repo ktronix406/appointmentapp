@@ -6,76 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Appointment Scheduling</title>
 
-    <!-- FullCalendar CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.9.0/main.min.css" rel="stylesheet">
+    <!-- FullCalendar 6.1.15 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/main.min.css" rel="stylesheet">
     <!-- Bootstrap CSS for Modal -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- jQuery and Moment.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
-
-    <!-- FullCalendar JS -->
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.9.0/main.min.js"></script>
-    <!-- Bootstrap JS for Modal -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Custom Styles -->
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: "Lucida Grande", Helvetica, Arial, Verdana, sans-serif;
-            font-size: 14px;
-        }
-
-        #calendar {
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 0 10px;
-        }
-
-        .fc-event {
-            border-radius: 1px !important;
-            font-weight: 300 !important;
-            line-height: 1.5 !important;
-        }
-
-        .fc-image {
-            display: block;
-            height: 50px;
-            overflow: hidden;
-            position: relative;
-            width: 100%;
-        }
-
-        .fc-image img {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            height: auto;
-            width: 100%;
-            transform: translate(-50%, -50%);
-        }
-
-        .tooltip {
-            width: 145px;
-            word-wrap: break-word;
-            display: none;
-            position: absolute;
-            border: 1px solid #333;
-            border-radius: 5px;
-            padding: 10px;
-            color: #fff;
-            font-size: 12px Arial;
-            z-index: 9999;
-        }
-    </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>Appointment Scheduling</h1>
+        <h1 class="text-center my-4">Appointment Scheduling</h1>
 
         <div id="calendar" class="calendar"></div>
 
@@ -224,36 +163,45 @@
             </div>
         </div>
 
+        <!-- FullCalendar 6.1.15 JS -->
+        <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/index.global.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/index.global.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.15/index.global.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
         <script>
-            $(document).ready(function () {
-                var calendarEl = document.getElementById('calendar');
-                var calendar = new FullCalendar.Calendar(calendarEl, {
-                    themeSystem: 'bootstrap', // Use Bootstrap theme
-                    initialView: 'timeGridDay', // Default to daily view
-                    headerToolbar: {
-                        left: 'prev,next today',
-                        center: 'title',
-                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                    },
-                    slotMinTime: '08:00:00',
-                    slotMaxTime: '18:00:00',
-                    slotDuration: '01:00:00',
-                    selectable: true,
-                    editable: true, // Enable drag-and-drop
- 
-                    eventClick: function (info) {
-                        // Logic to open a detailed view for editing
-                        alert('Clicked on: ' + info.event.title);
-                    },
-                    select: function (info) {
-                        // Open the modal when a time slot is clicked
-                        var modal = new bootstrap.Modal(document.getElementById('appointmentModal'));
-                        document.getElementById('appointmentStartTime').value = info.startStr; // Set the start time in the form
-                        modal.show();
-                    }
-                });
-                calendar.render();
-            });
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+
+        initialView: 'timeGridWeek',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        slotMinTime: '08:00:00',
+        slotMaxTime: '18:00:00',
+        slotDuration: '00:20:00', // Adjusts the duration of each slot, e.g., '00:30:00' for 30 minutes slots
+        slotLabelInterval: '01:00', // Adjusts the interval of the time labels
+        contentHeight: 'auto', // Adjusts the calendar height automatically based on the view
+        height: 'auto', // Or set a specific height
+        expandRows: true, // Ensures that the rows will expand to fill available height
+        selectable: true,
+        select: function(info) {
+            alert('Selected range: ' + info.startStr + ' to ' + info.endStr);
+        },
+        eventClick: function(info) {
+            alert('Event: ' + info.event.title);
+        },
+        editable: true,
+        dayMaxEvents: true // when too many events in a day, show the popover
+    });
+    calendar.render();
+});
+
+            
 
             // Phone number formatting function
             document.getElementById('customerPhone').addEventListener('input', function (e) {
@@ -369,6 +317,8 @@
                 });
             });
         </script>
+
+        
 </body>
 
 </html>
