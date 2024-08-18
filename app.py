@@ -75,14 +75,18 @@ class Installer(db.Model):
 # Modify the Appointment table to include end_time
 class Appointment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    start_time = db.Column(db.DateTime, nullable=False)  # Rename 'date' to 'start_time'
-    end_time = db.Column(db.DateTime, nullable=False)  # New column to store end time
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=False)
     customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
     vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicle.id'), nullable=False)
     installer_id = db.Column(db.Integer, db.ForeignKey('installer.id'), nullable=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     install_type = db.Column(db.String(50), nullable=False)
     comments = db.Column(db.Text)
+
+    # Relationship to access the product
+    product = db.relationship('Product', backref='appointments')
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -210,51 +214,108 @@ def index():
     return render_template('index.html')
 
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 @app.route('/schedule', methods=['GET', 'POST'])
 @login_required
 def schedule():
     if request.method == 'POST':
-        customer_id = request.form.get('customer_id')
-        vehicle_id = request.form.get('vehicle_id')
-        product_id = request.form.get('product_id')
-        install_type = request.form.get('installation_type')
+        # Debugging: Print form data to console
+        for key, value in request.form.items():
+            print(f"{key}: {value}")
+
+        # Retrieve form data
         start_time = request.form.get('start_time')
-        duration = int(request.form.get('duration'))
+        duration_str = request.form.get('duration')
+        
+        if not duration_str:
+            return "Duration is required", 400
+
+        try:
+            duration = int(duration_str)
+        except ValueError:
+            return "Invalid duration value", 400
+
         end_time = datetime.fromisoformat(start_time) + timedelta(hours=duration)
-        comments = request.form.get('comments', '')
 
-        if not all([customer_id, vehicle_id, product_id, install_type, start_time]):
-            return "Missing data for appointment creation", 400
+        # Retrieve or create customer, vehicle, product
+        customer_first_name = request.form.get('customer_first_name')
+        customer_last_name = request.form.get('customer_last_name')
+        customer_phone = request.form.get('customer_phone')
+        vehicle_year = request.form.get('vehicle_year')
+        vehicle_make = request.form.get('vehicle_make')
+        vehicle_model = request.form.get('vehicle_model')
+        product_name = request.form.get('product_name[]')  # Assuming a single product
+        product_price = request.form.get('product_price[]')
+        install_type = request.form.get('installation_type')
+        comments = request.form.get('notes')
 
-        new_appointment = Appointment(
-            date=start_time,
-            customer_id=customer_id,
-            vehicle_id=vehicle_id,
-            product_id=product_id,
-            install_type=install_type,
-            comments=comments
-        )
-        db.session.add(new_appointment)
-        db.session.commit()
+        # Create or find customer
+        customer = Customer.query.filter_by(phone_number=customer_phone).first()
+        if not customer:
+            customer = Customer(
+                first_name=customer_first_name,
+                last_name=customer_last_name,
+                phone_number=customer_phone
+            )
+            db.session.add(customer)
+            db.session.commit()
+
+        # Create or find vehicle
+        vehicle = Vehicle.query.filter_by(year=vehicle_year, make=vehicle_make, model=vehicle_model, customer_id=customer.id).first()
+        if not vehicle:
+            vehicle = Vehicle(
+                year=vehicle_year,
+                make=vehicle_make,
+                model=vehicle_model,
+                customer_id=customer.id
+            )
+            db.session.add(vehicle)
+            db.session.commit()
+
+        # Create or find product
+        product = Product.query.filter_by(name=product_name).first()
+        if not product:
+            product = Product(
+                name=product_name,
+                price=float(product_price) if product_price else 0.0,
+                type=install_type
+            )
+            db.session.add(product)
+            db.session.commit()
+
+        # Create and save the new appointment
+        try:
+            new_appointment = Appointment(
+                start_time=datetime.fromisoformat(start_time),
+                end_time=end_time,
+                customer_id=customer.id,
+                vehicle_id=vehicle.id,
+                product_id=product.id,
+                install_type=install_type,
+                comments=comments
+            )
+            db.session.add(new_appointment)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f'Error saving appointment: {e}')
+            return "There was an issue saving the appointment", 500
 
         return redirect(url_for('schedule'))
 
-    # Handle GET requests - return appointments in JSON format
+    # Retrieve existing appointments to display in the calendar
     appointments = Appointment.query.all()
     events = []
     for appointment in appointments:
         events.append({
-            'title': f'{appointment.customer.first_name} {appointment.customer.last_name} - {appointment.install_type}',
-            'start': appointment.date.isoformat(),
-            'end': (appointment.date + timedelta(hours=appointment.duration)).isoformat(),
+            'title': f'{appointment.customer.first_name} {appointment.customer.last_name} - {appointment.product.name}',
+            'start': appointment.start_time.isoformat(),
+            'end': appointment.end_time.isoformat(),
             'color': 'blue' if appointment.install_type == 'standard' else 'orange'
         })
 
     return render_template('schedule.html', events=events)
-
-
 
 
 
