@@ -371,13 +371,17 @@ def retrieve_calendar_events():
 @app.route('/appointment/delete/<int:appointment_id>', methods=['POST'])
 @login_required
 def delete_appointment(appointment_id):
-    appointment = Appointment.query.get(appointment_id)
+    appointment = db.session.get(Appointment, appointment_id)
     if appointment:
+        # Optionally delete related installation jobs manually if cascade isn't configured
+        db.session.query(InstallationJob).filter_by(appointment_id=appointment.id).delete()
+        
         db.session.delete(appointment)
         db.session.commit()
-        return jsonify({'status': 'success'})
+        return jsonify({'status': 'success', 'message': 'Appointment deleted successfully'})
     else:
         return jsonify({'status': 'error', 'message': 'Appointment not found'}), 404
+
 
 @app.route('/appointment/edit/<int:appointment_id>', methods=['POST'])
 @login_required
@@ -473,7 +477,8 @@ def edit_appointment(appointment_id):
             app.logger.debug(f'Appointment after update: {appointment}')
             
             db.session.commit()
-            return jsonify({'status': 'success'})
+            # Redirect to the schedule page after successful update
+            return redirect(url_for('schedule'))
         
         except Exception as e:
             db.session.rollback()
