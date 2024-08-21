@@ -453,38 +453,95 @@
 
                 calendar.render();
 
+                
+    // Add listeners for when modals close to refetch events
+    document.getElementById('createAppointmentModal').addEventListener('hidden.bs.modal', function () {
+        calendar.refetchEvents();
+    });
+
+    document.getElementById('editAppointmentModal').addEventListener('hidden.bs.modal', function () {
+        calendar.refetchEvents();
+    });
+
+    document.getElementById('deleteConfirmationModal').addEventListener('hidden.bs.modal', function () {
+        calendar.refetchEvents();
+    });
+
+
+
+                /**
+ * Function to handle the confirmation and action of moving or resizing an event.
+ * @param {Object} info - FullCalendar event info object.
+ * @param {String} actionType - The type of action ('drop' or 'resize').
+ */
+                function confirmMove(info, actionType) {
+                    const newStartTime = info.event.start;
+                    const newEndTime = info.event.end || newStartTime;
+
+                    // Format date and time for display
+                    const formattedStartTime = newStartTime.toLocaleString();
+                    const formattedEndTime = newEndTime.toLocaleString();
+
+                    // Update modal content
+                    document.getElementById('newDateTime').textContent = `${formattedStartTime} to ${formattedEndTime}`;
+
+                    // Show the modal
+                    const moveModal = new bootstrap.Modal(document.getElementById('moveConfirmationModal'));
+                    moveModal.show();
+
+                    // Handle confirmation
+                    document.getElementById('confirmMoveButton').onclick = function () {
+                        moveModal.hide();
+                        if (actionType === 'drop' || actionType === 'resize') {
+                            handleEventMoveOrResize(info.event);
+                        }
+                    };
+
+                    // Handle cancellation (optional, revert the event)
+                    document.getElementById('moveConfirmationModal').addEventListener('hidden.bs.modal', function () {
+                        calendar.refetchEvents();  // Revert the event position on cancel
+                    }, { once: true });
+                }
+
+                /**
+                 * Function to handle the actual moving or resizing of an event after confirmation.
+                 * @param {Object} event - FullCalendar event object.
+                 */
+                function handleEventMoveOrResize(event) {
+                    const startTimeISO = formatDateToLocalISO(event.start);
+                    const endTimeISO = event.end ? formatDateToLocalISO(event.end) : startTimeISO;
+
+                    fetch(`/appointment/move/${event.id}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `start_time=${encodeURIComponent(startTimeISO)}&end_time=${encodeURIComponent(endTimeISO)}`
+                    }).then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok.');
+                        }
+                        return response.json();
+                    }).then(data => {
+                        if (data.status !== 'success') {
+                            alert('Error moving appointment: ' + data.message);
+                            calendar.refetchEvents();
+                        }
+                    }).catch(error => {
+                        console.error('Fetch error:', error);
+                        alert('There was an error processing your request.');
+                        calendar.refetchEvents();
+                    });
+                }
+
+                /**
+                 * Utility function to format a date to ISO string, adjusting for timezone.
+                 * @param {Date} date - The date to format.
+                 * @returns {String} - The formatted date string.
+                 */
+                function formatDateToLocalISO(date) {
+                    const timezoneOffset = date.getTimezoneOffset() * 60000;
+                    return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 19);
+                }
             });
-            function handleEventMoveOrResize(event) {
-                // Format the new start and end times to ISO format
-                const startTimeISO = formatDateToLocalISO(event.start);
-                const endTimeISO = formatDateToLocalISO(event.end);
-
-                // Send the updated times to the backend
-                fetch(`/appointment/move/${event.id}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `start_time=${encodeURIComponent(startTimeISO)}&end_time=${encodeURIComponent(endTimeISO)}`
-                }).then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok.');
-                    }
-                    return response.json();
-                }).then(data => {
-                    if (data.status === 'success') {
-                    } else {
-                        alert('Error moving appointment: ' + data.message);
-                    }
-                }).catch(error => {
-                    console.error('Fetch error:', error);
-                    alert('There was an error processing your request.');
-                });
-            }
-
-            function formatDateToLocalISO(date) {
-                const timezoneOffset = date.getTimezoneOffset() * 60000;
-                return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 19);
-            }
-
             document.getElementById('editAppointmentButton').addEventListener('click', function () {
                 const viewModal = bootstrap.Modal.getInstance(document.getElementById('viewAppointmentModal'));
                 viewModal.hide();

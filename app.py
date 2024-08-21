@@ -10,7 +10,7 @@ import os
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'  # Replace with your actual secret key
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///car_audio.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
@@ -41,7 +41,7 @@ class Customer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
-    phone_number = db.Column(db.String(15), unique=True, nullable=False)
+    phone_number = db.Column(db.String(15), nullable=False)
     vehicles = db.relationship('Vehicle', backref='owner', lazy=True)
     appointments = db.relationship('Appointment', backref='customer', lazy=True)
     comments = db.Column(db.Text)
@@ -272,19 +272,34 @@ def calculate_appointment_times(form_data):
     return start_time, end_time
 
 def get_or_create_customer(form_data):
-    customer_phone = form_data.get('customer_phone')
-    customer = Customer.query.filter_by(phone_number=customer_phone).first()
-
-    if not customer:
-        customer = Customer(
-            first_name=form_data.get('customer_first_name'),
-            last_name=form_data.get('customer_last_name'),
-            phone_number=customer_phone
-        )
-        db.session.add(customer)
-        db.session.commit()
+    # Always create a new customer based on the form data, regardless of phone number
+    customer = Customer(
+        first_name=form_data.get('customer_first_name'),
+        last_name=form_data.get('customer_last_name'),
+        phone_number=form_data.get('customer_phone')
+    )
+    db.session.add(customer)
+    db.session.commit()
 
     return customer
+
+
+
+
+# def get_or_create_customer(form_data):
+#     customer_phone = form_data.get('customer_phone')
+#     customer = Customer.query.filter_by(phone_number=customer_phone).first()
+
+#     if not customer:
+#         customer = Customer(
+#             first_name=form_data.get('customer_first_name'),
+#             last_name=form_data.get('customer_last_name'),
+#             phone_number=customer_phone
+#         )
+#         db.session.add(customer)
+#         db.session.commit()
+
+#     return customer
 
 def get_or_create_vehicle(form_data, customer):
     vehicle_year = form_data.get('vehicle_year')
@@ -409,19 +424,6 @@ def edit_appointment(appointment_id):
             # Log the updated times
             app.logger.debug(f'Updated start time: {appointment.start_time}, end time: {appointment.end_time}')
 
-            # Update customer information
-            customer_first_name = request.form.get('customer_first_name')
-            customer_last_name = request.form.get('customer_last_name')
-            customer_phone = request.form.get('customer_phone')
-            if customer_first_name and customer_last_name and customer_phone:
-                customer = appointment.customer
-                customer.first_name = customer_first_name
-                customer.last_name = customer_last_name
-                customer.phone_number = customer_phone
-            
-            # Log customer update
-            app.logger.debug(f'Updated customer: {customer}')
-
             # Update vehicle information
             vehicle_year = request.form.get('vehicle_year')
             vehicle_make = request.form.get('vehicle_make')
@@ -487,18 +489,27 @@ def edit_appointment(appointment_id):
     else:
         return jsonify({'status': 'error', 'message': 'Appointment not found'}), 404
 
+
 @app.route('/appointment/move/<int:appointment_id>', methods=['POST'])
 @login_required
 def move_appointment(appointment_id):
     appointment = Appointment.query.get(appointment_id)
     if appointment:
         start_time = request.form.get('start_time')
-        if not start_time:
+        end_time = request.form.get('end_time')
+        
+        if not start_time or not end_time:
             return jsonify({'status': 'error', 'message': 'Invalid data'}), 400
         
         try:
-            appointment.start_time = datetime.fromisoformat(start_time)  # Naive datetime
-            appointment.end_time = appointment.start_time + (appointment.end_time - appointment.start_time)
+            # Parse the ISO format datetime strings to Python datetime objects
+            start_time_dt = datetime.fromisoformat(start_time)
+            end_time_dt = datetime.fromisoformat(end_time)
+            
+            # Update the appointment's start and end times
+            appointment.start_time = start_time_dt
+            appointment.end_time = end_time_dt
+
             db.session.commit()
             return jsonify({'status': 'success'})
         except Exception as e:
