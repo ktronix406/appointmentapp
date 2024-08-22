@@ -405,12 +405,6 @@ def edit_appointment(appointment_id):
     
     if appointment:
         try:
-            start_time = request.form.get('start_time')
-            end_time = request.form.get('end_time')
-            app.logger.debug(f"Received times: Start Time: {start_time}, End Time: {end_time}")
-            # Log the initial state
-            app.logger.debug(f'Editing appointment ID: {appointment_id}, Initial data: {appointment}')
-
             # Update start and end times
             start_time = request.form.get('start_time')
             duration_str = request.form.get('duration')
@@ -418,11 +412,8 @@ def edit_appointment(appointment_id):
                 return jsonify({'status': 'error', 'message': 'Invalid data'}), 400
             
             duration = int(duration_str)
-            appointment.start_time = datetime.fromisoformat(start_time)  # Naive datetime
+            appointment.start_time = datetime.fromisoformat(start_time)
             appointment.end_time = appointment.start_time + timedelta(hours=duration)
-            
-            # Log the updated times
-            app.logger.debug(f'Updated start time: {appointment.start_time}, end time: {appointment.end_time}')
 
             # Update vehicle information
             vehicle_year = request.form.get('vehicle_year')
@@ -434,53 +425,45 @@ def edit_appointment(appointment_id):
                 vehicle.make = vehicle_make
                 vehicle.model = vehicle_model
 
-            # Log vehicle update
-            app.logger.debug(f'Updated vehicle: {vehicle}')
-
             # Update installation type and notes
-            installation_type = request.form.get('installation_type')
-            notes = request.form.get('notes')
-            appointment.install_type = installation_type
-            appointment.comments = notes
+            appointment.install_type = request.form.get('installation_type')
+            appointment.comments = request.form.get('notes')
 
             # Update installation jobs
-            installation_jobs = request.form.getlist('edit_installation_job[]')
-            installation_prices = request.form.getlist('edit_installation_price[]')
-            existing_jobs = appointment.installation_jobs
+            existing_jobs = {job.id: job for job in appointment.installation_jobs}
+            form_job_ids = request.form.getlist('installation_job_id[]')
+            form_job_details = request.form.getlist('edit_installation_job[]')
+            form_job_prices = request.form.getlist('edit_installation_price[]')
 
-            # Log installation jobs before update
-            app.logger.debug(f'Existing jobs before update: {existing_jobs}')
+            # Remove jobs not in form
+            for job_id in existing_jobs:
+                if str(job_id) not in form_job_ids:
+                    db.session.delete(existing_jobs[job_id])
 
-            # Remove existing jobs that are no longer in the form
-            job_ids_in_form = {int(job_id) for job_id in request.form.getlist('installation_job_id[]')}
-            jobs_to_remove = [job for job in existing_jobs if job.id not in job_ids_in_form]
-            for job in jobs_to_remove:
-                db.session.delete(job)
-
-            # Log jobs to remove
-            app.logger.debug(f'Jobs to remove: {jobs_to_remove}')
-            
-            # Update existing jobs and add new ones
-            for job_details, price in zip(installation_jobs, installation_prices):
-                if job_details and price:
-                    job = next((job for job in existing_jobs if job.job_details == job_details), None)
+            # Add or update jobs
+            for idx, job_id in enumerate(form_job_ids):
+                job_details = form_job_details[idx]
+                job_price = form_job_prices[idx]
+                if job_id:
+                    # Update existing job
+                    job = existing_jobs.get(int(job_id))
                     if job:
                         job.job_details = job_details
-                        job.price = float(price)
-                    else:
-                        new_job = InstallationJob(
-                            job_details=job_details,
-                            price=float(price),
-                            appointment_id=appointment.id
-                        )
-                        db.session.add(new_job)
+                        job.price = float(job_price)
+                else:
+                    # Create new job
+                    new_job = InstallationJob(
+                        job_details=job_details,
+                        price=float(job_price),
+                        appointment_id=appointment.id
+                    )
+                    db.session.add(new_job)
 
-            # Log after update
-            app.logger.debug(f'Appointment after update: {appointment}')
-            
             db.session.commit()
-            # Redirect to the schedule page after successful update
-            return redirect(url_for('schedule'))
+            print('success')
+            return jsonify({'status': 'success', 'message': 'Appointment updated successfully'})
+            
+            
         
         except Exception as e:
             db.session.rollback()

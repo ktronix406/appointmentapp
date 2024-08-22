@@ -12,15 +12,14 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+
 <style>
     .fc .fc-button {
         text-transform: capitalize;
-        /* Capitalize each word */
     }
 
     .fc .fc-button.fc-today-button {
         text-transform: capitalize;
-        /* Make the "today" button text uppercase */
     }
 </style>
 
@@ -187,10 +186,11 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form id="edit-appointment-form" action="/appointment/edit/{{ appointment_id }}" method="POST">
+                        <form id="edit-appointment-form" action="/appointment/edit" method="POST">
                             <input type="hidden" name="appointment_id" id="editAppointmentId">
                             <input type="hidden" name="start_time" id="editAppointmentStartTime">
                             <!-- Same fields as the Create Modal, but populated with existing data -->
+                            <!-- Customer Information -->
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="editCustomerFirstName" class="form-label">First Name</label>
@@ -298,7 +298,6 @@
             </div>
         </div>
 
-
         <!-- View Appointment Modal -->
         <div class="modal fade" id="viewAppointmentModal" tabindex="-1" aria-labelledby="viewAppointmentModalLabel"
             aria-hidden="true">
@@ -362,9 +361,7 @@
                         </div>
 
                         <!-- Installation Jobs (read-only) -->
-                        <div id="viewInstallationJobsSection">
-                            <!-- Installation jobs will be populated here -->
-                        </div>
+                        <div id="viewInstallationJobsSection"></div>
 
                         <!-- Additional Notes (read-only) -->
                         <div class="row">
@@ -385,6 +382,7 @@
                 </div>
             </div>
         </div>
+
         <!-- Move Appointment Confirmation Modal -->
         <div class="modal fade" id="moveConfirmationModal" tabindex="-1" aria-labelledby="moveConfirmationModalLabel"
             aria-hidden="true">
@@ -404,16 +402,18 @@
                 </div>
             </div>
         </div>
+
         <br><br>
 
         <script>
+            let calendar;  // Declare the calendar variable globally
             let currentEvent;
 
             document.addEventListener('DOMContentLoaded', function () {
                 const calendarEl = document.getElementById('calendar');
                 const calendar = new FullCalendar.Calendar(calendarEl, {
                     themeSystem: 'bootstrap',
-                    initialView: 'dayGridMonth',  // Start in day view
+                    initialView: 'dayGridMonth',
                     headerToolbar: {
                         left: 'prev,next today',
                         center: 'title',
@@ -428,12 +428,11 @@
                     editable: true,
                     events: JSON.parse('{{ events|tojson|safe }}'),
 
-                    // Handle day click in month view
                     dateClick(info) {
                         if (calendar.view.type === 'dayGridMonth') {
-                            calendar.changeView('timeGridDay', info.dateStr);  // Switch to day view
+                            calendar.changeView('timeGridDay', info.dateStr);
                         } else {
-                            openCreateModal(info.dateStr);  // Open create appointment modal in other views
+                            openCreateModal(info.dateStr);
                         }
                     },
 
@@ -442,54 +441,51 @@
                     },
 
                     eventDrop(info) {
-                        handleEventMoveOrResize(info.event);
+                        confirmMove(info, 'drop');
                     },
 
                     eventResize(info) {
-                        handleEventMoveOrResize(info.event);
+                        confirmMove(info, 'resize');
                     }
                 });
 
 
-                calendar.render();
-
                 
-    // Add listeners for when modals close to refetch events
-    document.getElementById('createAppointmentModal').addEventListener('hidden.bs.modal', function () {
-        calendar.refetchEvents();
-    });
-
-    document.getElementById('editAppointmentModal').addEventListener('hidden.bs.modal', function () {
-        calendar.refetchEvents();
-    });
-
-    document.getElementById('deleteConfirmationModal').addEventListener('hidden.bs.modal', function () {
-        calendar.refetchEvents();
-    });
 
 
 
-                /**
- * Function to handle the confirmation and action of moving or resizing an event.
- * @param {Object} info - FullCalendar event info object.
- * @param {String} actionType - The type of action ('drop' or 'resize').
- */
+                calendar.render();
+                
+
+                document.getElementById('createAppointmentModal').addEventListener('hidden.bs.modal', function () {
+                    calendar.refetchEvents();
+                });
+
+                document.getElementById('editAppointmentModal').addEventListener('hidden.bs.modal', function () {
+                    calendar.refetchEvents();
+                });
+
+                document.getElementById('deleteConfirmationModal').addEventListener('hidden.bs.modal', function () {
+                    calendar.refetchEvents();
+                });
+
+                function formatDateToLocalISO(date) {
+                    const timezoneOffset = date.getTimezoneOffset() * 60000;
+                    return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 19);
+                }
+
                 function confirmMove(info, actionType) {
                     const newStartTime = info.event.start;
                     const newEndTime = info.event.end || newStartTime;
 
-                    // Format date and time for display
                     const formattedStartTime = newStartTime.toLocaleString();
                     const formattedEndTime = newEndTime.toLocaleString();
 
-                    // Update modal content
                     document.getElementById('newDateTime').textContent = `${formattedStartTime} to ${formattedEndTime}`;
 
-                    // Show the modal
                     const moveModal = new bootstrap.Modal(document.getElementById('moveConfirmationModal'));
                     moveModal.show();
 
-                    // Handle confirmation
                     document.getElementById('confirmMoveButton').onclick = function () {
                         moveModal.hide();
                         if (actionType === 'drop' || actionType === 'resize') {
@@ -497,16 +493,11 @@
                         }
                     };
 
-                    // Handle cancellation (optional, revert the event)
                     document.getElementById('moveConfirmationModal').addEventListener('hidden.bs.modal', function () {
-                        calendar.refetchEvents();  // Revert the event position on cancel
+                        calendar.refetchEvents();
                     }, { once: true });
                 }
 
-                /**
-                 * Function to handle the actual moving or resizing of an event after confirmation.
-                 * @param {Object} event - FullCalendar event object.
-                 */
                 function handleEventMoveOrResize(event) {
                     const startTimeISO = formatDateToLocalISO(event.start);
                     const endTimeISO = event.end ? formatDateToLocalISO(event.end) : startTimeISO;
@@ -532,217 +523,298 @@
                     });
                 }
 
-                /**
-                 * Utility function to format a date to ISO string, adjusting for timezone.
-                 * @param {Date} date - The date to format.
-                 * @returns {String} - The formatted date string.
-                 */
-                function formatDateToLocalISO(date) {
-                    const timezoneOffset = date.getTimezoneOffset() * 60000;
-                    return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 19);
-                }
-            });
-            document.getElementById('editAppointmentButton').addEventListener('click', function () {
-                const viewModal = bootstrap.Modal.getInstance(document.getElementById('viewAppointmentModal'));
-                viewModal.hide();
-                openEditModal(currentEvent);
-            });
+                document.getElementById('editAppointmentButton').addEventListener('click', function () {
+                    // Close the view modal before opening the edit modal
+                    const viewModal = bootstrap.Modal.getInstance(document.getElementById('viewAppointmentModal'));
+                    if (viewModal) {
+                        viewModal.hide();
+                    }
 
-            function openCreateModal(startStr) {
-                const modal = new bootstrap.Modal(document.getElementById('createAppointmentModal'));
-                document.getElementById('createAppointmentStartTime').value = startStr;
-                document.getElementById('create-appointment-form').reset();
-                modal.show();
-            }
-
-            function openEditModal(event) {
-                const modal = new bootstrap.Modal(document.getElementById('editAppointmentModal'));
-                const form = document.getElementById('edit-appointment-form');
-                form.action = `/appointment/edit/${event.id}`;
-                populateFormWithEventData(event, 'edit');
-                modal.show();
-            }
-
-            function openViewModal(event) {
-                currentEvent = event;
-                const modal = new bootstrap.Modal(document.getElementById('viewAppointmentModal'));
-                populateFormWithEventData(event, 'view');
-                modal.show();
-            }
-
-            function populateFormWithEventData(event, mode) {
-                const prefix = mode === 'edit' ? 'edit' : 'view';
-
-                if (mode === 'view') {
-                    const startTime = new Date(event.start);
-                    const endTime = new Date(event.end);
-
-                    const formattedStartTime = startTime.toTimeString().slice(0, 5);
-                    const formattedEndTime = endTime.toTimeString().slice(0, 5);
-
-                    document.getElementById('viewAppointmentTime').textContent = `${formattedStartTime} to ${formattedEndTime}`;
-                } else if (mode === 'edit') {
-                    populateField(`${prefix}AppointmentStartTime`, formatDateToLocalISO(event.start));
-                }
-
-                populateField(`${prefix}CustomerFirstName`, event.extendedProps.customer_first_name);
-                populateField(`${prefix}CustomerLastName`, event.extendedProps.customer_last_name);
-                populateField(`${prefix}CustomerPhone`, event.extendedProps.customer_phone);
-                populateField(`${prefix}VehicleYear`, event.extendedProps.vehicle_year);
-                populateField(`${prefix}VehicleMake`, event.extendedProps.vehicle_make);
-                populateField(`${prefix}VehicleModel`, event.extendedProps.vehicle_model);
-                populateField(`${prefix}InstallationType`, event.extendedProps.installation_type);
-                populateField(`${prefix}Duration`, event.extendedProps.duration);
-                populateField(`${prefix}Notes`, event.extendedProps.notes);
-
-                populateInstallationJobsSection(event.extendedProps.installation_jobs, prefix);
-            }
-
-            function populateField(elementId, value) {
-                const element = document.getElementById(elementId);
-                if (element) {
-                    element.value = value || '';
-                } else {
-                    console.error(`Element with ID ${elementId} not found`);
-                }
-            }
-
-            function populateInstallationJobsSection(jobs, prefix) {
-                const installationJobsSection = document.getElementById(`${prefix}InstallationJobsSection`);
-                installationJobsSection.innerHTML = '';
-                jobs.forEach(job => {
-                    const jobEntry = createInstallationJobEntry(job.job_details, job.price, prefix);
-                    installationJobsSection.appendChild(jobEntry);
+                    openEditModal(currentEvent);
                 });
+
+                function openEditModal(event) {
+    const appointmentId = event.id;
+    document.getElementById('editAppointmentId').value = appointmentId;
+
+    // Populate the form with event data
+    populateFormWithEventData(event, 'edit');
+
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('editAppointmentModal'));
+    modal.show();
+
+    // Handle form submission when the Save button is clicked
+    document.getElementById('edit-appointment-form').onsubmit = function (e) {
+        e.preventDefault(); // Prevent the default form submission
+
+        const formData = new FormData(this);
+
+        // Create a URL-encoded string manually
+        const data = new URLSearchParams();
+        data.append('start_time', formData.get('start_time'));
+        data.append('duration', formData.get('duration'));
+        data.append('vehicle_year', formData.get('vehicle_year'));
+        data.append('vehicle_make', formData.get('vehicle_make'));
+        data.append('vehicle_model', formData.get('vehicle_model'));
+        data.append('installation_type', formData.get('installation_type'));
+        data.append('notes', formData.get('notes'));
+
+        formData.getAll('edit_installation_job[]').forEach((job, index) => {
+            data.append('edit_installation_job[]', job);
+            data.append('edit_installation_price[]', formData.getAll('edit_installation_price[]')[index]);
+        });
+
+        fetch(`/appointment/edit/${appointmentId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: data.toString()
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                modal.hide();
+
+                // Find the existing event in the calendar
+                let event = calendar.getEventById(appointmentId);
+                
+                if (event) {
+                    // Remove the existing event
+                    event.remove();
+                }
+
+                // Add the updated event
+                const updatedEvent = {
+                    id: appointmentId,
+                    title: `${formData.get('customer_first_name')} ${formData.get('vehicle_make')} ${formData.get('vehicle_model')}`,
+                    start: formData.get('start_time'),
+                    end: new Date(new Date(formData.get('start_time')).getTime() + formData.get('duration') * 3600 * 1000).toISOString(),
+                    extendedProps: {
+                        customer_first_name: formData.get('customer_first_name'),
+                        customer_last_name: formData.get('customer_last_name'),
+                        customer_phone: formData.get('customer_phone'),
+                        vehicle_year: formData.get('vehicle_year'),
+                        vehicle_make: formData.get('vehicle_make'),
+                        vehicle_model: formData.get('vehicle_model'),
+                        installation_type: formData.get('installation_type'),
+                        notes: formData.get('notes'),
+                        installation_jobs: formData.getAll('edit_installation_job[]').map((job, index) => ({
+                            job_details: job,
+                            price: formData.getAll('edit_installation_price[]')[index]
+                        }))
+                    }
+                };
+
+                // Log the updated event to check its structure
+                console.log('Updated Event:', updatedEvent);
+
+                calendar.addEvent(updatedEvent);
+
+                // Optionally, you could also change the view to focus on the date of the edited event
+                calendar.changeView('timeGridDay', formData.get('start_time'));
+            } else {
+                alert('Error: ' + result.message);
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('There was an error processing your request.');
+        });
+    };
+}
 
-            function createInstallationJobEntry(jobDetails, jobPrice, prefix) {
-                const jobEntry = document.createElement('div');
-                jobEntry.className = 'row mb-3 installation-job-entry';
 
-                const jobDetailsDiv = document.createElement('div');
-                jobDetailsDiv.className = 'col-md-6';
-                const jobDetailsInput = document.createElement('input');
-                jobDetailsInput.type = 'text';
-                jobDetailsInput.name = `${prefix}_installation_job[]`;
-                jobDetailsInput.value = jobDetails || '';
-                jobDetailsInput.placeholder = 'Installation job details';
-                jobDetailsInput.className = 'form-control';
-                jobDetailsInput.readOnly = (prefix === 'view');
-                jobDetailsDiv.appendChild(jobDetailsInput);
 
-                const jobPriceDiv = document.createElement('div');
-                jobPriceDiv.className = 'col-md-6';
-                const jobPriceInput = document.createElement('input');
-                jobPriceInput.type = 'text';
-                jobPriceInput.name = `${prefix}_installation_price[]`;
-                jobPriceInput.value = jobPrice || '';
-                jobPriceInput.placeholder = 'Installation price';
-                jobPriceInput.className = 'form-control';
-                jobPriceInput.readOnly = (prefix === 'view');
-                jobPriceDiv.appendChild(jobPriceInput);
+                function openCreateModal(startStr) {
+                    const modal = new bootstrap.Modal(document.getElementById('createAppointmentModal'));
+                    document.getElementById('createAppointmentStartTime').value = startStr;
+                    document.getElementById('create-appointment-form').reset();
+                    modal.show();
+                }
 
-                jobEntry.appendChild(jobDetailsDiv);
-                jobEntry.appendChild(jobPriceDiv);
+                function openViewModal(event) {
+                    currentEvent = event;
+                    const modal = new bootstrap.Modal(document.getElementById('viewAppointmentModal'));
+                    populateFormWithEventData(event, 'view');
+                    modal.show();
+                }
 
-                return jobEntry;
-            }
+                function populateFormWithEventData(event, mode) {
+                    const prefix = mode === 'edit' ? 'edit' : 'view';
 
-            document.getElementById('addCreateProduct').addEventListener('click', function () {
-                const productContainer = createProductEntry('create');
-                document.getElementById('createProductDetailsSection').appendChild(productContainer);
-            });
+                    if (mode === 'view') {
+                        const startTime = new Date(event.start);
+                        const endTime = new Date(event.end);
 
-            document.getElementById('addCreateInstallationJob').addEventListener('click', function () {
-                const installationJobEntry = createInstallationJobEntry('', '', 'create');
-                document.getElementById('createInstallationJobsSection').appendChild(installationJobEntry);
-            });
+                        const formattedStartTime = startTime.toTimeString().slice(0, 5);
+                        const formattedEndTime = endTime.toTimeString().slice(0, 5);
 
-            function createProductEntry(prefix) {
-                const productContainer = document.createElement('div');
-                productContainer.className = 'row mb-3 product-entry';
+                        document.getElementById('viewAppointmentTime').textContent = `${formattedStartTime} to ${formattedEndTime}`;
+                    } else if (mode === 'edit') {
+                        document.getElementById('editAppointmentStartTime').value = formatDateToLocalISO(event.start);
+                        document.getElementById('editAppointmentId').value = event.id;
+                    }
 
-                const productNameDiv = document.createElement('div');
-                productNameDiv.className = 'col-md-6';
-                const productNameInput = document.createElement('input');
-                productNameInput.type = 'text';
-                productNameInput.name = `${prefix}_product_name[]`;
-                productNameInput.placeholder = 'Enter product name';
-                productNameInput.className = 'form-control';
-                productNameDiv.appendChild(productNameInput);
+                    populateField(`${prefix}CustomerFirstName`, event.extendedProps.customer_first_name);
+                    populateField(`${prefix}CustomerLastName`, event.extendedProps.customer_last_name);
+                    populateField(`${prefix}CustomerPhone`, event.extendedProps.customer_phone);
+                    populateField(`${prefix}VehicleYear`, event.extendedProps.vehicle_year);
+                    populateField(`${prefix}VehicleMake`, event.extendedProps.vehicle_make);
+                    populateField(`${prefix}VehicleModel`, event.extendedProps.vehicle_model);
+                    populateField(`${prefix}InstallationType`, event.extendedProps.installation_type);
+                    populateField(`${prefix}Duration`, event.extendedProps.duration);
+                    populateField(`${prefix}Notes`, event.extendedProps.notes);
 
-                const productPriceDiv = document.createElement('div');
-                productPriceDiv.className = 'col-md-6';
-                const productPriceInput = document.createElement('input');
-                productPriceInput.type = 'text';
-                productPriceInput.name = `${prefix}_product_price[]`;
-                productPriceInput.placeholder = 'Enter product price (informational only)';
-                productPriceInput.className = 'form-control';
-                productPriceDiv.appendChild(productPriceInput);
+                    populateInstallationJobsSection(event.extendedProps.installation_jobs, prefix);
+                }
 
-                if (prefix !== 'view') {
-                    const removeButtonDiv = document.createElement('div');
-                    removeButtonDiv.className = 'col-md-12 text-end';
-                    const removeButton = document.createElement('button');
-                    removeButton.type = 'button';
-                    removeButton.className = 'btn btn-danger btn-sm remove-product';
-                    removeButton.textContent = 'Remove Product';
-                    removeButtonDiv.appendChild(removeButton);
+                function populateField(elementId, value) {
+                    const element = document.getElementById(elementId);
+                    if (element) {
+                        element.value = value || '';
+                    } else {
+                        console.error(`Element with ID ${elementId} not found`);
+                    }
+                }
 
-                    removeButton.addEventListener('click', function () {
-                        productContainer.remove();
+                function populateInstallationJobsSection(jobs, prefix) {
+                    const installationJobsSection = document.getElementById(`${prefix}InstallationJobsSection`);
+                    installationJobsSection.innerHTML = '';
+                    jobs.forEach(job => {
+                        const jobEntry = createInstallationJobEntry(job.job_details, job.price, prefix);
+                        installationJobsSection.appendChild(jobEntry);
                     });
-
-                    productContainer.appendChild(removeButtonDiv);
                 }
 
-                productContainer.appendChild(productNameDiv);
-                productContainer.appendChild(productPriceDiv);
+                function createInstallationJobEntry(jobDetails, jobPrice, prefix) {
+                    const jobEntry = document.createElement('div');
+                    jobEntry.className = 'row mb-3 installation-job-entry';
 
-                return productContainer;
-            }
+                    const jobDetailsDiv = document.createElement('div');
+                    jobDetailsDiv.className = 'col-md-6';
+                    const jobDetailsInput = document.createElement('input');
+                    jobDetailsInput.type = 'text';
+                    jobDetailsInput.name = `${prefix}_installation_job[]`;
+                    jobDetailsInput.value = jobDetails || '';
+                    jobDetailsInput.placeholder = 'Installation job details';
+                    jobDetailsInput.className = 'form-control';
+                    jobDetailsInput.readOnly = (prefix === 'view');
+                    jobDetailsDiv.appendChild(jobDetailsInput);
 
-            document.querySelectorAll('.remove-product').forEach(button => {
-                button.addEventListener('click', function () {
-                    button.closest('.product-entry').remove();
+                    const jobPriceDiv = document.createElement('div');
+                    jobPriceDiv.className = 'col-md-6';
+                    const jobPriceInput = document.createElement('input');
+                    jobPriceInput.type = 'text';
+                    jobPriceInput.name = `${prefix}_installation_price[]`;
+                    jobPriceInput.value = jobPrice || '';
+                    jobPriceInput.placeholder = 'Installation price';
+                    jobPriceInput.className = 'form-control';
+                    jobPriceInput.readOnly = (prefix === 'view');
+                    jobPriceDiv.appendChild(jobPriceInput);
+
+                    jobEntry.appendChild(jobDetailsDiv);
+                    jobEntry.appendChild(jobPriceDiv);
+
+                    return jobEntry;
+                }
+
+                document.getElementById('addCreateProduct').addEventListener('click', function () {
+                    const productContainer = createProductEntry('create');
+                    document.getElementById('createProductDetailsSection').appendChild(productContainer);
                 });
-            });
 
-            document.querySelectorAll('.remove-installation-job').forEach(button => {
-                button.addEventListener('click', function () {
-                    button.closest('.installation-job-entry').remove();
+                document.getElementById('addCreateInstallationJob').addEventListener('click', function () {
+                    const installationJobEntry = createInstallationJobEntry('', '', 'create');
+                    document.getElementById('createInstallationJobsSection').appendChild(installationJobEntry);
                 });
-            });
 
-            document.getElementById('deleteAppointmentButton').addEventListener('click', function (event) {
-                event.preventDefault(); // Prevent default form submission
-                event.stopPropagation(); // Stop the event from bubbling up
+                function createProductEntry(prefix) {
+                    const productContainer = document.createElement('div');
+                    productContainer.className = 'row mb-3 product-entry';
 
-                const modal = new bootstrap.Modal(document.getElementById('deleteConfirmationModal'));
-                modal.show(); // Show the confirmation modal
-            });
+                    const productNameDiv = document.createElement('div');
+                    productNameDiv.className = 'col-md-6';
+                    const productNameInput = document.createElement('input');
+                    productNameInput.type = 'text';
+                    productNameInput.name = `${prefix}_product_name[]`;
+                    productNameInput.placeholder = 'Enter product name';
+                    productNameInput.className = 'form-control';
+                    productNameDiv.appendChild(productNameInput);
 
-            document.getElementById('confirmDeleteButton').addEventListener('click', function (event) {
-                event.preventDefault(); // Prevent default form submission
-                event.stopPropagation(); // Stop the event from bubbling up
+                    const productPriceDiv = document.createElement('div');
+                    productPriceDiv.className = 'col-md-6';
+                    const productPriceInput = document.createElement('input');
+                    productPriceInput.type = 'text';
+                    productPriceInput.name = `${prefix}_product_price[]`;
+                    productPriceInput.placeholder = 'Enter product price (informational only)';
+                    productPriceInput.className = 'form-control';
+                    productPriceDiv.appendChild(productPriceInput);
 
-                const appointmentId = currentEvent.id;  // Assuming currentEvent is the selected appointment
+                    if (prefix !== 'view') {
+                        const removeButtonDiv = document.createElement('div');
+                        removeButtonDiv.className = 'col-md-12 text-end';
+                        const removeButton = document.createElement('button');
+                        removeButton.type = 'button';
+                        removeButton.className = 'btn btn-danger btn-sm remove-product';
+                        removeButton.textContent = 'Remove Product';
+                        removeButtonDiv.appendChild(removeButton);
 
-                fetch(`/appointment/delete/${appointmentId}`, {
-                    method: 'POST',
+                        removeButton.addEventListener('click', function () {
+                            productContainer.remove();
+                        });
 
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            window.location.reload();  // Reload the page or re-render the calendar
-                        } else {
-                            alert('Error: ' + data.message);
-                        }
+                        productContainer.appendChild(removeButtonDiv);
+                    }
+
+                    productContainer.appendChild(productNameDiv);
+                    productContainer.appendChild(productPriceDiv);
+
+                    return productContainer;
+                }
+
+                document.querySelectorAll('.remove-product').forEach(button => {
+                    button.addEventListener('click', function () {
+                        button.closest('.product-entry').remove();
+                    });
+                });
+
+                document.querySelectorAll('.remove-installation-job').forEach(button => {
+                    button.addEventListener('click', function () {
+                        button.closest('.installation-job-entry').remove();
+                    });
+                });
+
+                document.getElementById('deleteAppointmentButton').addEventListener('click', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const modal = new bootstrap.Modal(document.getElementById('deleteConfirmationModal'));
+                    modal.show();
+                });
+
+                document.getElementById('confirmDeleteButton').addEventListener('click', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const appointmentId = currentEvent.id;
+
+                    fetch(`/appointment/delete/${appointmentId}`, {
+                        method: 'POST',
                     })
-                    .catch(error => console.error('Error:', error));
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                window.location.reload();
+                            } else {
+                                alert('Error: ' + data.message);
+                            }
+                        })
+                        .catch(error => console.error('Error:', error));
+                });
             });
 
+
+            
         </script>
     </div>
 </body>
