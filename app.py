@@ -5,38 +5,50 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
 from flask_migrate import Migrate
+from dotenv import load_dotenv
 import os
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key'  # Replace with your actual secret key
+# Initialize Flask app
+app = Flask(__name__, static_folder='static', static_url_path='/static')
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Configuration settings
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')  # Suggest using an environment variable for SECRET_KEY
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///car_audio.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+
+# Initialize database and migration tools
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# Set up Flask-Login
+# Set up Flask-Login for user session management
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# User model
+# User model representing a system user (e.g., admin, salesperson)
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
     role = db.Column(db.String(50), nullable=False)
 
+    # Hash the password before saving
     def set_password(self, password):
         self.password = generate_password_hash(password)
 
+    # Verify the password during login
     def check_password(self, password):
         return check_password_hash(self.password, password)
-    
+
+# Load the current user from the session
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Customer model
+# Customer model storing customer details
 class Customer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     first_name = db.Column(db.String(50), nullable=False)
@@ -46,7 +58,7 @@ class Customer(db.Model):
     appointments = db.relationship('Appointment', backref='customer', lazy=True)
     comments = db.Column(db.Text)
 
-# Vehicle model
+# Vehicle model representing a customer's vehicle
 class Vehicle(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     year = db.Column(db.Integer, nullable=False)
@@ -56,7 +68,7 @@ class Vehicle(db.Model):
     customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
     appointments = db.relationship('Appointment', backref='vehicle', lazy=True)
 
-# Product model
+# Product model storing product details related to installations
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -66,14 +78,14 @@ class Product(db.Model):
     warranty_info = db.Column(db.String(100))
     appointments = db.relationship('Appointment', back_populates='product', lazy=True)
 
-# Installer model
+# Installer model representing an installer with associated skill level
 class Installer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     skill_level = db.Column(db.String(50), nullable=False)
     appointments = db.relationship('Appointment', back_populates='installer', lazy=True)
 
-# Appointment model
+# Appointment model representing an installation appointment
 class Appointment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     start_time = db.Column(db.DateTime, nullable=False)
@@ -89,7 +101,7 @@ class Appointment(db.Model):
     installer = db.relationship('Installer', back_populates='appointments', lazy=True)
     installation_jobs = db.relationship('InstallationJob', back_populates='appointment', lazy=True)
 
-# InstallationJob model
+# InstallationJob model storing details about specific installation tasks within an appointment
 class InstallationJob(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_details = db.Column(db.String(200), nullable=False)
@@ -98,7 +110,7 @@ class InstallationJob(db.Model):
 
     appointment = db.relationship('Appointment', back_populates='installation_jobs', lazy=True)
 
-# Routes
+# Route for user registration
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     message = None
@@ -107,9 +119,11 @@ def register():
         password = request.form.get('password')
         role = request.form.get('role')
         
+        # Check if username already exists
         if User.query.filter_by(username=username).first():
             message = "Username already exists"
         else:
+            # Create and save new user
             new_user = User(username=username, role=role.capitalize())
             new_user.set_password(password)
             db.session.add(new_user)
@@ -118,6 +132,7 @@ def register():
     
     return render_template('register.html', message=message)
 
+# Route for user login with role-based redirection
 @app.route('/login/<role>', methods=['GET', 'POST'])
 def login(role):
     if request.method == 'POST':
@@ -125,6 +140,7 @@ def login(role):
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
         
+        # Validate user credentials and role
         if user and user.check_password(password) and user.role == role.capitalize():
             login_user(user)
             return redirect(url_for(f'{role}_dashboard'))
@@ -133,27 +149,32 @@ def login(role):
     
     return render_template(f'login_{role}.html')
 
+# Route for user logout
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
+# General dashboard accessible after login
 @app.route('/dashboard')
 @login_required
 def dashboard():
     return f"Welcome {current_user.username}! You are logged in as {current_user.role}."
 
+# Route for Sales Dashboard
 @app.route('/sales_dashboard')
 @login_required
 def sales_dashboard():
     return "Welcome to the Sales Dashboard!"
 
+# Route for Installation Dashboard
 @app.route('/installation_dashboard')
 @login_required
 def installation_dashboard():
     return "Welcome to the Installation Dashboard!"
 
+# Manager-specific dashboard with user and appointment management
 @app.route('/manager_dashboard', methods=['GET', 'POST'])
 @login_required
 def manager_dashboard():
@@ -170,6 +191,7 @@ def manager_dashboard():
 
     return render_template('manager_dashboard.html', users=users, customers=customers, appointments=appointments)
 
+# Handle form submissions on the manager dashboard
 def handle_manager_form_submission(form_data):
     if 'add_user' in form_data:
         add_user(form_data)
@@ -182,6 +204,7 @@ def handle_manager_form_submission(form_data):
     elif 'delete_user' in form_data:
         delete_user(form_data)
 
+# Add a new user to the database
 def add_user(form_data):
     username = form_data.get('username')
     password = form_data.get('password')
@@ -191,6 +214,7 @@ def add_user(form_data):
     db.session.add(new_user)
     db.session.commit()
 
+# Update existing user information
 def update_user(form_data):
     user_id = form_data.get('user_id')
     user = User.query.get(user_id)
@@ -202,28 +226,33 @@ def update_user(form_data):
         user.email = new_email
     db.session.commit()
 
+# Delete a customer from the database
 def delete_customer(form_data):
     customer_id = form_data.get('customer_id')
     customer = Customer.query.get(customer_id)
     db.session.delete(customer)
     db.session.commit()
 
+# Delete an appointment from the database
 def delete_appointment_entry(form_data):
     appointment_id = form_data.get('appointment_id')
     appointment = Appointment.query.get(appointment_id)
     db.session.delete(appointment)
     db.session.commit()
 
+# Delete a user from the database
 def delete_user(form_data):
     user_id = form_data.get('user_id')
     user = User.query.get(user_id)
     db.session.delete(user)
     db.session.commit()
 
+# Route for the main index page
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# Route for scheduling appointments
 @app.route('/schedule', methods=['GET', 'POST'])
 @login_required
 def schedule():
@@ -235,6 +264,7 @@ def schedule():
     events = retrieve_calendar_events()
     return render_template('schedule.html', events=events)
 
+# Process the form data and create a new appointment
 def process_appointment_form(form_data):
     try:
         start_time, end_time = calculate_appointment_times(form_data)
@@ -242,19 +272,22 @@ def process_appointment_form(form_data):
         vehicle = get_or_create_vehicle(form_data, customer)
         product = get_or_create_product(form_data)
 
+        # Create a new appointment record
         new_appointment = create_appointment(start_time, end_time, customer, vehicle, product, form_data)
         db.session.add(new_appointment)
         db.session.commit()  # Commit to generate the new_appointment.id
 
+        # Create associated installation jobs
         create_installation_jobs(form_data, new_appointment)
         db.session.commit()
 
         return True
     except Exception as e:
-        db.session.rollback()
+        db.session.rollback()  # Rollback changes on error
         app.logger.error(f'Error saving appointment: {e}')
         return False
 
+# Calculate start and end times for an appointment based on form data
 def calculate_appointment_times(form_data):
     start_time = form_data.get('start_time')
     duration_str = form_data.get('duration')
@@ -271,6 +304,7 @@ def calculate_appointment_times(form_data):
     end_time = start_time + timedelta(hours=duration)
     return start_time, end_time
 
+# Retrieve or create a new customer based on form data
 def get_or_create_customer(form_data):
     # Always create a new customer based on the form data, regardless of phone number
     customer = Customer(
@@ -283,24 +317,7 @@ def get_or_create_customer(form_data):
 
     return customer
 
-
-
-
-# def get_or_create_customer(form_data):
-#     customer_phone = form_data.get('customer_phone')
-#     customer = Customer.query.filter_by(phone_number=customer_phone).first()
-
-#     if not customer:
-#         customer = Customer(
-#             first_name=form_data.get('customer_first_name'),
-#             last_name=form_data.get('customer_last_name'),
-#             phone_number=customer_phone
-#         )
-#         db.session.add(customer)
-#         db.session.commit()
-
-#     return customer
-
+# Retrieve or create a vehicle associated with a customer
 def get_or_create_vehicle(form_data, customer):
     vehicle_year = form_data.get('vehicle_year')
     vehicle_make = form_data.get('vehicle_make')
@@ -319,6 +336,7 @@ def get_or_create_vehicle(form_data, customer):
 
     return vehicle
 
+# Retrieve or create a product associated with an appointment
 def get_or_create_product(form_data):
     product_name = form_data.get('product_name[]')  # Assuming a single product
     product_price = form_data.get('product_price[]')
@@ -335,6 +353,7 @@ def get_or_create_product(form_data):
 
     return product
 
+# Create a new appointment record in the database
 def create_appointment(start_time, end_time, customer, vehicle, product, form_data):
     return Appointment(
         start_time=start_time,  # Use naive datetime
@@ -346,6 +365,7 @@ def create_appointment(start_time, end_time, customer, vehicle, product, form_da
         comments=form_data.get('notes')
     )
 
+# Create installation job records associated with an appointment
 def create_installation_jobs(form_data, new_appointment):
     installation_jobs = form_data.getlist('installation_job[]')
     installation_prices = form_data.getlist('installation_price[]')
@@ -358,6 +378,18 @@ def create_installation_jobs(form_data, new_appointment):
         )
         db.session.add(installation_job)
 
+
+@app.route('/events')
+def events():
+    try:
+        events = retrieve_calendar_events()  # Assuming this function retrieves and formats your events
+        return jsonify(events)
+    except Exception as e:
+        app.logger.error(f"Error retrieving events: {e}")
+        return jsonify({'status': 'error', 'message': 'Could not retrieve events'}), 500
+
+
+# Retrieve all appointments and prepare them for display on a calendar
 def retrieve_calendar_events():
     appointments = Appointment.query.all()
     events = []
@@ -383,6 +415,7 @@ def retrieve_calendar_events():
         })
     return events
 
+# Route to delete an appointment
 @app.route('/appointment/delete/<int:appointment_id>', methods=['POST'])
 @login_required
 def delete_appointment(appointment_id):
@@ -397,7 +430,7 @@ def delete_appointment(appointment_id):
     else:
         return jsonify({'status': 'error', 'message': 'Appointment not found'}), 404
 
-
+# Route to edit an existing appointment
 @app.route('/appointment/edit/<int:appointment_id>', methods=['POST'])
 @login_required
 def edit_appointment(appointment_id):
@@ -462,8 +495,6 @@ def edit_appointment(appointment_id):
             db.session.commit()
             print('success')
             return jsonify({'status': 'success', 'message': 'Appointment updated successfully'})
-            
-            
         
         except Exception as e:
             db.session.rollback()
@@ -472,7 +503,7 @@ def edit_appointment(appointment_id):
     else:
         return jsonify({'status': 'error', 'message': 'Appointment not found'}), 404
 
-
+# Route to move an appointment to a new time
 @app.route('/appointment/move/<int:appointment_id>', methods=['POST'])
 @login_required
 def move_appointment(appointment_id):
@@ -502,9 +533,42 @@ def move_appointment(appointment_id):
     else:
         return jsonify({'status': 'error', 'message': 'Appointment not found'}), 404
 
+
+# Function to print all products, along with associated customer and vehicle, on app startup
+def print_products_on_startup():
+    products = Product.query.all()
+    if products:
+        print("Products in the database:")
+        for product in products:
+            print(f'Product Name: {product.name}, Price: {product.price}, Type: {product.type}')
+            
+            # Loop through the associated appointments
+            for appointment in product.appointments:
+                customer = appointment.customer
+                vehicle = appointment.vehicle
+                
+                if customer:
+                    print(f'  Customer Name: {customer.first_name} {customer.last_name}, Phone: {customer.phone_number}')
+                else:
+                    print("  No customer associated with this product.")
+                
+                if vehicle:
+                    print(f'  Vehicle: {vehicle.year} {vehicle.make} {vehicle.model}')
+                else:
+                    print("  No vehicle associated with this product.")
+    else:
+        print("No products found in the database.")
+  
+
+
+# Run the app
 if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
     with app.app_context():
         db.create_all()
+
+        print_products_on_startup()
+
 
         # Query and print appointment start and end times
         appointments = Appointment.query.all()
@@ -513,5 +577,8 @@ if __name__ == '__main__':
                 print(f'Appointment ID: {appointment.id}, Start time: {appointment.start_time}, End time: {appointment.end_time}')
         else:
             print('No appointments found in the database.')
+
+    
+        
 
         app.run(debug=True)

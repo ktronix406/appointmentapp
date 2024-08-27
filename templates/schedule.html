@@ -5,28 +5,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Appointment Scheduling</title>
+
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- FullCalendar JS -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        .fc .fc-button {
+            text-transform: capitalize;
+        }
+
+        .fc .fc-button.fc-today-button {
+            text-transform: capitalize;
+        }
+    </style>
 </head>
-
-<style>
-    .fc .fc-button {
-        text-transform: capitalize;
-    }
-
-    .fc .fc-button.fc-today-button {
-        text-transform: capitalize;
-    }
-</style>
 
 <body>
     <div class="container">
         <h1 class="text-center my-4">Appointment Scheduling</h1>
 
+        <!-- Calendar Container -->
         <div id="calendar" class="calendar"></div>
 
         <!-- Create Appointment Modal -->
@@ -41,6 +43,7 @@
                     <div class="modal-body">
                         <form id="create-appointment-form" action="/schedule" method="POST">
                             <input type="hidden" name="start_time" id="createAppointmentStartTime">
+
                             <!-- Customer Information -->
                             <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -139,8 +142,7 @@
                                             placeholder="Enter installation job details" required>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="createInstallationPrice" class="form-label">Installation
-                                            Price</label>
+                                        <label for="createInstallationPrice" class="form-label">Installation Price</label>
                                         <input type="text" class="form-control" name="installation_price[]"
                                             placeholder="Enter installation price" required>
                                     </div>
@@ -167,6 +169,7 @@
                                 </div>
                             </div>
 
+                            <!-- Submit Button -->
                             <div class="mb-3">
                                 <button type="submit" class="btn btn-primary w-100">Create Appointment</button>
                             </div>
@@ -177,8 +180,7 @@
         </div>
 
         <!-- Edit Appointment Modal -->
-        <div class="modal fade" id="editAppointmentModal" tabindex="-1" aria-labelledby="editAppointmentModalLabel"
-            aria-hidden="true">
+        <div class="modal fade" id="editAppointmentModal" tabindex="-1" aria-labelledby="editAppointmentModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -189,23 +191,20 @@
                         <form id="edit-appointment-form" action="/appointment/edit" method="POST">
                             <input type="hidden" name="appointment_id" id="editAppointmentId">
                             <input type="hidden" name="start_time" id="editAppointmentStartTime">
-                            <!-- Same fields as the Create Modal, but populated with existing data -->
+
                             <!-- Customer Information -->
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="editCustomerFirstName" class="form-label">First Name</label>
-                                    <input type="text" class="form-control" id="editCustomerFirstName"
-                                        name="customer_first_name" required>
+                                    <input type="text" class="form-control" id="editCustomerFirstName" name="customer_first_name" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="editCustomerLastName" class="form-label">Last Name</label>
-                                    <input type="text" class="form-control" id="editCustomerLastName"
-                                        name="customer_last_name" required>
+                                    <input type="text" class="form-control" id="editCustomerLastName" name="customer_last_name" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="editCustomerPhone" class="form-label">Phone Number</label>
-                                    <input type="tel" class="form-control" id="editCustomerPhone" name="customer_phone"
-                                        required>
+                                    <input type="tel" class="form-control" id="editCustomerPhone" name="customer_phone" required>
                                 </div>
                             </div>
 
@@ -213,30 +212,32 @@
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <label for="editVehicleYear" class="form-label">Vehicle Year</label>
-                                    <input type="text" class="form-control" id="editVehicleYear" name="vehicle_year"
-                                        required>
+                                    <input type="text" class="form-control" id="editVehicleYear" name="vehicle_year" required>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label for="editVehicleMake" class="form-label">Vehicle Make</label>
-                                    <input type="text" class="form-control" id="editVehicleMake" name="vehicle_make"
-                                        required>
+                                    <input type="text" class="form-control" id="editVehicleMake" name="vehicle_make" required>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label for="editVehicleModel" class="form-label">Vehicle Model</label>
-                                    <input type="text" class="form-control" id="editVehicleModel" name="vehicle_model"
-                                        required>
+                                    <input type="text" class="form-control" id="editVehicleModel" name="vehicle_model" required>
                                 </div>
                             </div>
 
                             <!-- Product Details -->
                             <div id="editProductDetailsSection"></div>
 
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <button type="button" class="btn btn-secondary btn-sm" id="addEditProduct">Add Another Product</button>
+                                </div>
+                            </div>
+
                             <!-- Installation Type and Duration -->
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="editInstallationType" class="form-label">Installation Type</label>
-                                    <select class="form-select" id="editInstallationType" name="installation_type"
-                                        required>
+                                    <select class="form-select" id="editInstallationType" name="installation_type" required>
                                         <option value="standard">Standard Installation</option>
                                         <option value="custom">Custom Installation</option>
                                         <option value="check">Check</option>
@@ -259,6 +260,12 @@
                             <!-- Installation Jobs -->
                             <div id="editInstallationJobsSection"></div>
 
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <button type="button" class="btn btn-secondary btn-sm" id="addEditInstallationJob">Add Another Installation Job</button>
+                                </div>
+                            </div>
+
                             <!-- Additional Notes -->
                             <div class="row">
                                 <div class="col-md-12 mb-3">
@@ -267,10 +274,10 @@
                                 </div>
                             </div>
 
+                            <!-- Save and Delete Buttons -->
                             <div class="mb-3">
                                 <button type="submit" class="btn btn-primary w-100">Save Changes</button>
-                                <button type="button" id="deleteAppointmentButton"
-                                    class="btn btn-danger w-100 mt-2">Delete Appointment</button>
+                                <button type="button" id="deleteAppointmentButton" class="btn btn-danger w-100 mt-2">Delete Appointment</button>
                             </div>
                         </form>
                     </div>
@@ -402,421 +409,10 @@
                 </div>
             </div>
         </div>
-
-        <br><br>
-
-        <script>
-            let calendar;  // Declare the calendar variable globally
-            let currentEvent;
-
-            document.addEventListener('DOMContentLoaded', function () {
-                const calendarEl = document.getElementById('calendar');
-                const calendar = new FullCalendar.Calendar(calendarEl, {
-                    themeSystem: 'bootstrap',
-                    initialView: 'dayGridMonth',
-                    headerToolbar: {
-                        left: 'prev,next today',
-                        center: 'title',
-                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                    },
-                    slotMinTime: '08:00:00',
-                    slotMaxTime: '18:00:00',
-                    slotDuration: '01:00:00',
-                    expandRows: true,
-                    selectable: true,
-                    selectMirror: true,
-                    editable: true,
-                    events: JSON.parse('{{ events|tojson|safe }}'),
-
-                    dateClick(info) {
-                        if (calendar.view.type === 'dayGridMonth') {
-                            calendar.changeView('timeGridDay', info.dateStr);
-                        } else {
-                            openCreateModal(info.dateStr);
-                        }
-                    },
-
-                    eventClick(info) {
-                        openViewModal(info.event);
-                    },
-
-                    eventDrop(info) {
-                        confirmMove(info, 'drop');
-                    },
-
-                    eventResize(info) {
-                        confirmMove(info, 'resize');
-                    }
-                });
-
-
-                
-
-
-
-                calendar.render();
-                
-
-                document.getElementById('createAppointmentModal').addEventListener('hidden.bs.modal', function () {
-                    calendar.refetchEvents();
-                });
-
-                document.getElementById('editAppointmentModal').addEventListener('hidden.bs.modal', function () {
-                    calendar.refetchEvents();
-                });
-
-                document.getElementById('deleteConfirmationModal').addEventListener('hidden.bs.modal', function () {
-                    calendar.refetchEvents();
-                });
-
-                function formatDateToLocalISO(date) {
-                    const timezoneOffset = date.getTimezoneOffset() * 60000;
-                    return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 19);
-                }
-
-                function confirmMove(info, actionType) {
-                    const newStartTime = info.event.start;
-                    const newEndTime = info.event.end || newStartTime;
-
-                    const formattedStartTime = newStartTime.toLocaleString();
-                    const formattedEndTime = newEndTime.toLocaleString();
-
-                    document.getElementById('newDateTime').textContent = `${formattedStartTime} to ${formattedEndTime}`;
-
-                    const moveModal = new bootstrap.Modal(document.getElementById('moveConfirmationModal'));
-                    moveModal.show();
-
-                    document.getElementById('confirmMoveButton').onclick = function () {
-                        moveModal.hide();
-                        if (actionType === 'drop' || actionType === 'resize') {
-                            handleEventMoveOrResize(info.event);
-                        }
-                    };
-
-                    document.getElementById('moveConfirmationModal').addEventListener('hidden.bs.modal', function () {
-                        calendar.refetchEvents();
-                    }, { once: true });
-                }
-
-                function handleEventMoveOrResize(event) {
-                    const startTimeISO = formatDateToLocalISO(event.start);
-                    const endTimeISO = event.end ? formatDateToLocalISO(event.end) : startTimeISO;
-
-                    fetch(`/appointment/move/${event.id}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `start_time=${encodeURIComponent(startTimeISO)}&end_time=${encodeURIComponent(endTimeISO)}`
-                    }).then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok.');
-                        }
-                        return response.json();
-                    }).then(data => {
-                        if (data.status !== 'success') {
-                            alert('Error moving appointment: ' + data.message);
-                            calendar.refetchEvents();
-                        }
-                    }).catch(error => {
-                        console.error('Fetch error:', error);
-                        alert('There was an error processing your request.');
-                        calendar.refetchEvents();
-                    });
-                }
-
-                document.getElementById('editAppointmentButton').addEventListener('click', function () {
-                    // Close the view modal before opening the edit modal
-                    const viewModal = bootstrap.Modal.getInstance(document.getElementById('viewAppointmentModal'));
-                    if (viewModal) {
-                        viewModal.hide();
-                    }
-
-                    openEditModal(currentEvent);
-                });
-
-                function openEditModal(event) {
-    const appointmentId = event.id;
-    document.getElementById('editAppointmentId').value = appointmentId;
-
-    // Populate the form with event data
-    populateFormWithEventData(event, 'edit');
-
-    // Show the modal
-    const modal = new bootstrap.Modal(document.getElementById('editAppointmentModal'));
-    modal.show();
-
-    // Handle form submission when the Save button is clicked
-    document.getElementById('edit-appointment-form').onsubmit = function (e) {
-        e.preventDefault(); // Prevent the default form submission
-
-        const formData = new FormData(this);
-
-        // Create a URL-encoded string manually
-        const data = new URLSearchParams();
-        data.append('start_time', formData.get('start_time'));
-        data.append('duration', formData.get('duration'));
-        data.append('vehicle_year', formData.get('vehicle_year'));
-        data.append('vehicle_make', formData.get('vehicle_make'));
-        data.append('vehicle_model', formData.get('vehicle_model'));
-        data.append('installation_type', formData.get('installation_type'));
-        data.append('notes', formData.get('notes'));
-
-        formData.getAll('edit_installation_job[]').forEach((job, index) => {
-            data.append('edit_installation_job[]', job);
-            data.append('edit_installation_price[]', formData.getAll('edit_installation_price[]')[index]);
-        });
-
-        fetch(`/appointment/edit/${appointmentId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: data.toString()
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.status === 'success') {
-                modal.hide();
-
-                // Find the existing event in the calendar
-                let event = calendar.getEventById(appointmentId);
-                
-                if (event) {
-                    // Remove the existing event
-                    event.remove();
-                }
-
-                // Add the updated event
-                const updatedEvent = {
-                    id: appointmentId,
-                    title: `${formData.get('customer_first_name')} ${formData.get('vehicle_make')} ${formData.get('vehicle_model')}`,
-                    start: formData.get('start_time'),
-                    end: new Date(new Date(formData.get('start_time')).getTime() + formData.get('duration') * 3600 * 1000).toISOString(),
-                    extendedProps: {
-                        customer_first_name: formData.get('customer_first_name'),
-                        customer_last_name: formData.get('customer_last_name'),
-                        customer_phone: formData.get('customer_phone'),
-                        vehicle_year: formData.get('vehicle_year'),
-                        vehicle_make: formData.get('vehicle_make'),
-                        vehicle_model: formData.get('vehicle_model'),
-                        installation_type: formData.get('installation_type'),
-                        notes: formData.get('notes'),
-                        installation_jobs: formData.getAll('edit_installation_job[]').map((job, index) => ({
-                            job_details: job,
-                            price: formData.getAll('edit_installation_price[]')[index]
-                        }))
-                    }
-                };
-
-                // Log the updated event to check its structure
-                console.log('Updated Event:', updatedEvent);
-
-                calendar.addEvent(updatedEvent);
-
-                // Optionally, you could also change the view to focus on the date of the edited event
-                calendar.changeView('timeGridDay', formData.get('start_time'));
-            } else {
-                alert('Error: ' + result.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('There was an error processing your request.');
-        });
-    };
-}
-
-
-
-                function openCreateModal(startStr) {
-                    const modal = new bootstrap.Modal(document.getElementById('createAppointmentModal'));
-                    document.getElementById('createAppointmentStartTime').value = startStr;
-                    document.getElementById('create-appointment-form').reset();
-                    modal.show();
-                }
-
-                function openViewModal(event) {
-                    currentEvent = event;
-                    const modal = new bootstrap.Modal(document.getElementById('viewAppointmentModal'));
-                    populateFormWithEventData(event, 'view');
-                    modal.show();
-                }
-
-                function populateFormWithEventData(event, mode) {
-                    const prefix = mode === 'edit' ? 'edit' : 'view';
-
-                    if (mode === 'view') {
-                        const startTime = new Date(event.start);
-                        const endTime = new Date(event.end);
-
-                        const formattedStartTime = startTime.toTimeString().slice(0, 5);
-                        const formattedEndTime = endTime.toTimeString().slice(0, 5);
-
-                        document.getElementById('viewAppointmentTime').textContent = `${formattedStartTime} to ${formattedEndTime}`;
-                    } else if (mode === 'edit') {
-                        document.getElementById('editAppointmentStartTime').value = formatDateToLocalISO(event.start);
-                        document.getElementById('editAppointmentId').value = event.id;
-                    }
-
-                    populateField(`${prefix}CustomerFirstName`, event.extendedProps.customer_first_name);
-                    populateField(`${prefix}CustomerLastName`, event.extendedProps.customer_last_name);
-                    populateField(`${prefix}CustomerPhone`, event.extendedProps.customer_phone);
-                    populateField(`${prefix}VehicleYear`, event.extendedProps.vehicle_year);
-                    populateField(`${prefix}VehicleMake`, event.extendedProps.vehicle_make);
-                    populateField(`${prefix}VehicleModel`, event.extendedProps.vehicle_model);
-                    populateField(`${prefix}InstallationType`, event.extendedProps.installation_type);
-                    populateField(`${prefix}Duration`, event.extendedProps.duration);
-                    populateField(`${prefix}Notes`, event.extendedProps.notes);
-
-                    populateInstallationJobsSection(event.extendedProps.installation_jobs, prefix);
-                }
-
-                function populateField(elementId, value) {
-                    const element = document.getElementById(elementId);
-                    if (element) {
-                        element.value = value || '';
-                    } else {
-                        console.error(`Element with ID ${elementId} not found`);
-                    }
-                }
-
-                function populateInstallationJobsSection(jobs, prefix) {
-                    const installationJobsSection = document.getElementById(`${prefix}InstallationJobsSection`);
-                    installationJobsSection.innerHTML = '';
-                    jobs.forEach(job => {
-                        const jobEntry = createInstallationJobEntry(job.job_details, job.price, prefix);
-                        installationJobsSection.appendChild(jobEntry);
-                    });
-                }
-
-                function createInstallationJobEntry(jobDetails, jobPrice, prefix) {
-                    const jobEntry = document.createElement('div');
-                    jobEntry.className = 'row mb-3 installation-job-entry';
-
-                    const jobDetailsDiv = document.createElement('div');
-                    jobDetailsDiv.className = 'col-md-6';
-                    const jobDetailsInput = document.createElement('input');
-                    jobDetailsInput.type = 'text';
-                    jobDetailsInput.name = `${prefix}_installation_job[]`;
-                    jobDetailsInput.value = jobDetails || '';
-                    jobDetailsInput.placeholder = 'Installation job details';
-                    jobDetailsInput.className = 'form-control';
-                    jobDetailsInput.readOnly = (prefix === 'view');
-                    jobDetailsDiv.appendChild(jobDetailsInput);
-
-                    const jobPriceDiv = document.createElement('div');
-                    jobPriceDiv.className = 'col-md-6';
-                    const jobPriceInput = document.createElement('input');
-                    jobPriceInput.type = 'text';
-                    jobPriceInput.name = `${prefix}_installation_price[]`;
-                    jobPriceInput.value = jobPrice || '';
-                    jobPriceInput.placeholder = 'Installation price';
-                    jobPriceInput.className = 'form-control';
-                    jobPriceInput.readOnly = (prefix === 'view');
-                    jobPriceDiv.appendChild(jobPriceInput);
-
-                    jobEntry.appendChild(jobDetailsDiv);
-                    jobEntry.appendChild(jobPriceDiv);
-
-                    return jobEntry;
-                }
-
-                document.getElementById('addCreateProduct').addEventListener('click', function () {
-                    const productContainer = createProductEntry('create');
-                    document.getElementById('createProductDetailsSection').appendChild(productContainer);
-                });
-
-                document.getElementById('addCreateInstallationJob').addEventListener('click', function () {
-                    const installationJobEntry = createInstallationJobEntry('', '', 'create');
-                    document.getElementById('createInstallationJobsSection').appendChild(installationJobEntry);
-                });
-
-                function createProductEntry(prefix) {
-                    const productContainer = document.createElement('div');
-                    productContainer.className = 'row mb-3 product-entry';
-
-                    const productNameDiv = document.createElement('div');
-                    productNameDiv.className = 'col-md-6';
-                    const productNameInput = document.createElement('input');
-                    productNameInput.type = 'text';
-                    productNameInput.name = `${prefix}_product_name[]`;
-                    productNameInput.placeholder = 'Enter product name';
-                    productNameInput.className = 'form-control';
-                    productNameDiv.appendChild(productNameInput);
-
-                    const productPriceDiv = document.createElement('div');
-                    productPriceDiv.className = 'col-md-6';
-                    const productPriceInput = document.createElement('input');
-                    productPriceInput.type = 'text';
-                    productPriceInput.name = `${prefix}_product_price[]`;
-                    productPriceInput.placeholder = 'Enter product price (informational only)';
-                    productPriceInput.className = 'form-control';
-                    productPriceDiv.appendChild(productPriceInput);
-
-                    if (prefix !== 'view') {
-                        const removeButtonDiv = document.createElement('div');
-                        removeButtonDiv.className = 'col-md-12 text-end';
-                        const removeButton = document.createElement('button');
-                        removeButton.type = 'button';
-                        removeButton.className = 'btn btn-danger btn-sm remove-product';
-                        removeButton.textContent = 'Remove Product';
-                        removeButtonDiv.appendChild(removeButton);
-
-                        removeButton.addEventListener('click', function () {
-                            productContainer.remove();
-                        });
-
-                        productContainer.appendChild(removeButtonDiv);
-                    }
-
-                    productContainer.appendChild(productNameDiv);
-                    productContainer.appendChild(productPriceDiv);
-
-                    return productContainer;
-                }
-
-                document.querySelectorAll('.remove-product').forEach(button => {
-                    button.addEventListener('click', function () {
-                        button.closest('.product-entry').remove();
-                    });
-                });
-
-                document.querySelectorAll('.remove-installation-job').forEach(button => {
-                    button.addEventListener('click', function () {
-                        button.closest('.installation-job-entry').remove();
-                    });
-                });
-
-                document.getElementById('deleteAppointmentButton').addEventListener('click', function (event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    const modal = new bootstrap.Modal(document.getElementById('deleteConfirmationModal'));
-                    modal.show();
-                });
-
-                document.getElementById('confirmDeleteButton').addEventListener('click', function (event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    const appointmentId = currentEvent.id;
-
-                    fetch(`/appointment/delete/${appointmentId}`, {
-                        method: 'POST',
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === 'success') {
-                                window.location.reload();
-                            } else {
-                                alert('Error: ' + data.message);
-                            }
-                        })
-                        .catch(error => console.error('Error:', error));
-                });
-            });
-
-
-            
-        </script>
-    </div>
-</body>
-
-</html>
+                <!-- Link to the external JavaScript file -->
+                <script src="{{ url_for('static', filename='app_script.js') }}"></script>
+
+            </div>
+        </body>
+        
+        </html>
